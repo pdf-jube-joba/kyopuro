@@ -1,0 +1,8 @@
+[workspace]
+
+members = [
+    "tenkei90/problem1",
+    "atcoder100/problem1",
+    "atcoder100/problem2",
+    "atcoder100/problem3",
+]
