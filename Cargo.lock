@@ -9,6 +9,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
+name = "problem10"
+version = "0.1.0"
+
+[[package]]
 name = "problem100_1"
 version = "0.1.0"
 dependencies = [
@@ -49,6 +53,24 @@ version = "0.1.0"
 dependencies = [
  "proconio",
 ]
+
+[[package]]
+name = "problem7"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problem8"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problem9"
+version = "0.1.0"
 
 [[package]]
 name = "problem90_1"
