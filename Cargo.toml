@@ -12,4 +12,6 @@ members = [
     "atcoder100/problem8",
     "atcoder100/problem9",
     "atcoder100/problem10",
+    "atcoder100/problem11",
+    "atcoder100/problem12",
 ]
