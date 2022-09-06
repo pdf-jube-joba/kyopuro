@@ -1,12 +1,3 @@
-fn main() {
-
-    let vec = input();
-    for (n, x) in vec {
-        println!("{}", count(n, x));
-    }
-
-}
-
 fn input() -> Vec<(usize, usize)> {
     let mut vec = Vec::new();
     loop {
@@ -27,6 +18,15 @@ fn input() -> Vec<(usize, usize)> {
     }
     vec
 }
+fn main() {
+
+    let vec = input();
+    
+    for (n, x) in vec {
+        println!("{}", count(n, x));
+    }
+
+}
 
 fn count(n: usize, x: usize) -> usize {
     let mut count = 0;
@@ -39,4 +39,13 @@ fn count(n: usize, x: usize) -> usize {
         }
     }
     count
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    #[test]
+    fn test_count() {
+        assert_eq!(count(5,9), 2);
+    }
 }

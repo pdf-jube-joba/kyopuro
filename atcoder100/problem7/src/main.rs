@@ -27,7 +27,11 @@ fn output(a: &[(i32, i32)]) -> usize {
     max.try_into().unwrap()
 }
 
-#[test]
-fn example() {
-    assert_eq!(output(&vec![(9,4), (4,3), (1,1), (4,2), (2,4), (5,8), (4,0), (5,3), (0,5), (5,2)]), 10)
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    #[test]
+    fn test_output_1() {
+        assert_eq!(output(&vec![(9,4), (4,3), (1,1), (4,2), (2,4), (5,8), (4,0), (5,3), (0,5), (5,2)]), 10)
+    }
 }

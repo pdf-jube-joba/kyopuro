@@ -4,53 +4,40 @@ fn main() {
         a: [(usize, usize); n],
     }
 
-    println!("{}", min_of_1(&a));
+    println!("{}", min_of(&a));
 
 }
 
-fn abs_m_u(x: usize, y: usize) -> usize {
-    if x > y { x - y } else { y - x }
-}
-
-fn min_of_1(a: &[(usize, usize)]) -> usize {
-    let mut min = std::usize::MAX;
-    for s in 1..=100 {
-        for t in 1..=100 {
-            let mut sum = 0;
-            for n in a {
-                sum += abs_m_u(s, n.0) + abs_m_u(n.0, n.1) + abs_m_u(n.1, t);
-            }
-            if sum < min {min = sum;}
-        }
-    }
-    min
-}
-
-fn min_of_2(a: &[(usize, usize)]) -> usize {
-    let s_min = {
+fn min_of(a: &[(usize, usize)]) -> usize {
+    let s_min: usize = {
         let mut vec: Vec<usize> = a.into_iter()
-            .map(|(x,_)|{*x}).clone().collect();
+            .map(|(x,_)|{*x}).collect();
         vec.sort();
         let mid = vec[vec.len() / 2];
-        vec.into_iter().fold(0, |acc, item|{acc + abs_m_u(item, mid)})
+        vec.into_iter().map(|item|{item.abs_diff(mid)}).sum()
     };
-    let m_cst = {
-        let mut m = 0;
-        a.into_iter().for_each(|(x,y)|{m += abs_m_u(*x, *y)});
-        m
+    let m_cst: usize = {
+        a.into_iter().map(|(x, y)|{(*x).abs_diff(*y)}).sum()
     };
-    let t_min = {
+    let t_min: usize = {
         let mut vec: Vec<usize> = a.into_iter()
-            .map(|(_, y)|{*y}).clone().collect();
+            .map(|(_, y)|{*y}).collect();
         vec.sort();
         let mid = vec[vec.len() / 2];
-        vec.into_iter().fold(0, |acc, item|{acc + abs_m_u(item, mid)})
+        vec.into_iter().map(|item|{item.abs_diff(mid)}).sum()
     };
     s_min + m_cst + t_min
 }
 
-#[test]
-fn example () {
-    assert_eq!(min_of_1(&vec![(5,7), (2,6), (8,10)]), 18);
-    assert_eq!(min_of_2(&vec![(5,7), (2,6), (8,10)]), 18);
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    #[test]
+    fn min_of_test_1(){
+        assert_eq!(min_of(&vec![(5,7), (2,6), (8,10)]), 18);
+    }
+    #[test]
+    fn min_of_test_2(){
+        assert_eq!(min_of(&vec![(5,7), (2,6), (8,10)]), 18);
+    }
 }
