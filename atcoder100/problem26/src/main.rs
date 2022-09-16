@@ -1,3 +1,5 @@
+use std::vec;
+
 fn main() {
     proconio::input! {
         n: usize, q:usize,
@@ -6,50 +8,61 @@ fn main() {
     }
 
     let result = solve(n, &ab, &px);
-    (0..n).for_each(|i|{
-        print!("{} ", result[i]);
-    });
+//    (0..n).for_each(|i|{
+//        print!("{} ", result[i]);
+//    });
 }
+struct TreeGraph(Vec<Vec<usize>>);
 
-#[derive(Debug)]
-struct Tree {
-    this_number: usize,
-    nodes: Vec<Tree>,
-}
-
-impl Tree {
-    fn new(n: usize, ab: &[(usize, usize)]) -> Tree {
-        let mut c: Vec<Vec<usize>> = vec![Vec::new(); n + 1];
-        for &(a,b) in ab {
-            c[a].push(b);
-            c[b].push(a);
+impl TreeGraph {
+    fn new(n: usize, ab: &[(usize, usize)]) -> TreeGraph {
+        let mut graph = vec![Vec::new(); n + 1];
+        for &(a, b) in ab {
+            graph[a].push(b);
+            graph[b].push(a);
         }
-        fn new_rec(n: usize, p: Option<usize>, c: &[Vec<usize>]) -> Tree {
-            Tree {
-                this_number: n,
-                nodes: 
-                    c[n].iter().filter(|&i| Some(*i) != p).map(|&i|{
-                        new_rec(i, Some(n), c)
-                    }).collect()
+        let mut parent = vec![None; n + 1];
+        parent[1] = Some(0);
+        let mut stack: Vec<usize> = vec![1];
+        while let Some(now) = stack.pop() {
+            for &l in &graph[now] {
+                if parent[l].is_none() {
+                    parent[l] = Some(now);
+                    stack.push(l);
+                }
             }
         }
-        new_rec(1, None, &c)
+        let mut tree = vec![vec![]; n + 1];
+        for i in 0..=n {
+            tree[i] = graph[i].iter().filter_map(|x|{
+                if Some(*x) != parent[i] {Some(*x)} else {None}
+            }).collect();
+        }
+        TreeGraph(tree)
     }
 }
 
-fn sum_tree(tree: &Tree, px: &[(usize, usize)], dp: &mut [usize], sum: usize) {
-    let dp_next: usize = px.iter().map(|p|{ if p.0 == tree.this_number {p.1} else {0}}).sum();
-    let next = dp_next + sum;
-    dp[tree.this_number - 1] = next;
-    tree.nodes.iter().for_each(|node|{
-        sum_tree(node, px, dp, next)
-    });
+fn dfs(now: usize, tree_ref: &TreeGraph, p: &[usize], dp: &mut [usize], acc: usize, count: usize) {
+//    print!("-{}-", count);
+    let TreeGraph(ref tree) = tree_ref;
+    let next = p[now] + acc;
+    dp[now] = next;
+    for &node in &tree[now] {
+        dfs(node, tree_ref, p, dp, next, count + 1);
+    }
 }
 
 fn solve(n: usize, ab: &[(usize, usize)], px: &[(usize, usize)]) -> Vec<usize> {
-    let tree = Tree::new(n,&ab);
-    let mut dp = vec![0;n];
-    sum_tree(&tree, px, &mut dp, 0);
+    let p = {
+        let mut vec = vec![0; 1 + n];
+        for &(a, b) in px {
+            vec[a] += b;
+        }
+        vec
+    };
+    let tree = TreeGraph::new(n, ab);
+    let mut dp = vec![0; n + 1];
+    dfs(1,&tree, &p, &mut dp, 0, 0);
     dp
 }
 
@@ -63,7 +76,7 @@ mod tests {
         let ab = vec![(1,2),(2,3),(2,4)];
         let px = vec![(2,10),(1,100),(3,1)];
         let result = solve(n, &ab, &px);
-        assert_eq!(result, vec![100,110,111,110]);
+        assert_eq!(result[1..], vec![100,110,111,110]);
     }
     #[test]
     fn test_2(){
@@ -72,6 +85,6 @@ mod tests {
         let ab = vec![(1,3),(2,3)];
         let px = vec![(2,10),(1,100),(3,1)];
         let result = solve(n, &ab, &px);
-        assert_eq!(result, vec![100,111,101]);
+        assert_eq!(result[1..], vec![100,111,101]);
     }
 }
