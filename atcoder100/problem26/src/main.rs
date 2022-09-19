@@ -14,23 +14,6 @@ fn main() {
 }
 
 fn solve(n: usize, ab: &[(usize, usize)], px: &[(usize, usize)]) -> Vec<usize> {
-    fn dfs(
-        now: usize,
-        parent: Option<usize>,
-        point: &[usize],
-        tree: &[Vec<usize>],
-        dp: &mut Vec<usize>,
-        acc: usize,
-    ) {
-        let next = point[now] + acc;
-        dp[now] = next;
-        for &node in &tree[now] {
-            if Some(node) != parent {
-                dfs(node, Some(now), point, tree, dp, next);
-            }
-        }
-    }
-
     let point = {
         let mut vec = vec![0; n];
         for &(a, b) in px {
@@ -46,8 +29,18 @@ fn solve(n: usize, ab: &[(usize, usize)], px: &[(usize, usize)]) -> Vec<usize> {
         }
         vec
     };
+
     let mut dp = vec![0; n];
-    dfs(0, None, &point, &tree, &mut dp, 0);
+    let mut stack: Vec<(usize, Option<usize>)> = Vec::with_capacity(n);
+    stack.push((0, None));
+    while let Some((now, parent)) = stack.pop() {
+        dp[now] = point[now] + if let Some(parent) = parent {dp[parent]} else {0};
+        tree[now].iter()
+            .filter(|&&node| Some(node) != parent)
+            .for_each(|&node| {
+                stack.push((node, Some(now)));
+            });
+    }
     dp
 }
 
@@ -56,6 +49,15 @@ mod tests {
     use std::io::BufRead;
 
     use crate::*;
+
+    fn time<T>(f: Box<dyn Fn() -> T>) -> (std::time::Duration, T) {
+        let start_time = std::time::SystemTime::now();
+        let result = f();
+        let end_time = std::time::SystemTime::now();
+        let duration = end_time.duration_since(start_time).unwrap();
+        (duration, result)
+    }
+
     #[test]
     fn test_1(){
         let n = 4;
@@ -63,7 +65,7 @@ mod tests {
         let ab = vec![(1,2),(2,3),(2,4)];
         let px = vec![(2,10),(1,100),(3,1)];
         let result = solve(n, &ab, &px);
-        assert_eq!(result[1..], vec![100,110,111,110]);
+        assert_eq!(result, vec![100,110,111,110]);
     }
     #[test]
     fn test_2(){
@@ -72,7 +74,7 @@ mod tests {
         let ab = vec![(1,3),(2,3)];
         let px = vec![(2,10),(1,100),(3,1)];
         let result = solve(n, &ab, &px);
-        assert_eq!(result[1..], vec![100,111,101]);
+        assert_eq!(result, vec![100,111,101]);
     }
     #[test]
     fn test_3(){
@@ -108,7 +110,9 @@ mod tests {
                 str.unwrap().split_whitespace().map(|s|s.parse().unwrap()).collect::<Vec<usize>>()
             }).collect()
         };
-        let result = solve(n, &ab, &px);
+        let solvetime = Box::new(move ||{solve(n, &ab, &px)});
+        let (time, result) = time(solvetime);
         assert_eq!(result, expect);
+        assert!(time < std::time::Duration::from_secs(2));
     }
 }
