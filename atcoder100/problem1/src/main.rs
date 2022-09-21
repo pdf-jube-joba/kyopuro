@@ -29,16 +29,15 @@ fn main() {
 }
 
 fn count(n: usize, x: usize) -> usize {
-    let mut count = 0;
-    for i in 1..n {
-        for j in i+1..n {
+    (1..n)
+    .flat_map(|i| (i+1..n).map(move |j|(i,j)))
+    .filter(|&(i,j)| {
+        i + j < x && {
             let k = x - (i + j);
-            if k > i && k > j && n >= k {
-                count += 1;
-            }
+            j < k && k <= n
         }
-    }
-    count
+    })
+    .count()
 }
 
 #[cfg(test)]
@@ -47,5 +46,7 @@ mod tests {
     #[test]
     fn test_count() {
         assert_eq!(count(5,9), 2);
+        assert_eq!(count(10,0), 0);
+        assert_eq!(count(3,10), 0);
     }
 }

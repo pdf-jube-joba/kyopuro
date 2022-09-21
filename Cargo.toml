@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+    "test_other",
     "tenkei90/problem1",
     "atcoder100/problem1",
     "atcoder100/problem2",
@@ -26,4 +27,7 @@ members = [
     "atcoder100/problem22",
     "atcoder100/problem23",
     "atcoder100/problem24",
+    "atcoder100/problem25",
+    "atcoder100/problem26",
+    "atcoder100/problem27",
 ]

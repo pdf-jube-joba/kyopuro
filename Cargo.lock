@@ -167,6 +167,24 @@ name = "problem24"
 version = "0.1.0"
 
 [[package]]
+name = "problem25"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problem26"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problem27"
+version = "0.1.0"
+
+[[package]]
 name = "problem7"
 version = "0.1.0"
 dependencies = [
@@ -187,4 +205,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "91c333be3af2936f8e810300bc74fe4d0cc168ebc04ab02a28c5b1060fa1bd59"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "test_other"
+version = "0.1.0"
+dependencies = [
+ "proconio",
 ]
