@@ -14,13 +14,15 @@ fn count(s: &str) -> usize {
             _ => false
         }
     }).collect();
-    let mut count = 0;
-    let mut max = count;
-    b.iter().for_each(|b|{
-        if *b {count += 1;} else {count = 0;}
-        if count > max {max = count;}
-    });
-    max
+    let n = b.len();
+    (0..=n)
+    .flat_map(|i|{
+        (i..=n).map(move |j| (i, j))
+    })
+    .filter_map(|(i,j)|{
+        if b[i..j].iter().all(|&b|b) {Some(j - i)} else {None}
+    })
+    .max().unwrap()
 }
 
 #[cfg(test)]

@@ -9,19 +9,16 @@ fn main() {
 }
 
 fn maximize(a: &[Vec<usize>]) -> usize {
-    let mut max = 0;
     let n = a.len();
     let m = a[0].len();
-    for i in 0..m {
-        for j in i..m {
-            let mut count = 0;
-            for k in 0..n {
-                count += std::cmp::max(a[k][i], a[k][j])
-            }
-            if count > max {max = count;}
-        }
-    }
-    max
+    (0..m)
+    .flat_map(|i|{
+        (i..m).map(move |j| (i,j))
+    })
+    .map(|(i,j)|{
+        (0..n).map(|k| std::cmp::max(a[k][i], a[k][j])).sum()
+    })
+    .max().unwrap()
 }
 
 #[cfg(test)]

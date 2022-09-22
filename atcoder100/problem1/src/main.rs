@@ -3,12 +3,10 @@ fn input() -> Vec<(usize, usize)> {
     loop {
         let mut str = String::new();
         std::io::stdin().read_line(&mut str).unwrap();
-        let tuple: Vec<&str> = str
+        let tuple: Vec<usize> = str
             .split_whitespace()
+            .map(|str|{str.parse().unwrap()})
             .collect();
-        let tuple: Vec<usize> = tuple
-            .into_iter()
-            .map(|str|{str.parse().unwrap()}).collect();
         let (x,y) = (tuple[0], tuple[1]);
         if x == 0 && y == 0 {
             break

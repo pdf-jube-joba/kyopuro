@@ -64,4 +64,28 @@ $(i,j)$ であって $1 \leq i < j \leq n-1$ を並べて、そのうち条件�
 ```
 
 # input について
-proconio を使おうかとも思ったが、一応
+proconio を使おうかとも思ったが、入力の最後が 0 0 であることを考えて自分で書くことになった。
+
+```Rust
+fn input() -> Vec<(usize, usize)> {
+    let mut vec = Vec::new();
+    loop {
+        let mut str = String::new();
+        std::io::stdin().read_line(&mut str).unwrap();
+        let tuple: Vec<usize> = str
+            .split_whitespace()
+            .map(|str|{str.parse().unwrap()})
+            .collect();
+        let (x,y) = (tuple[0], tuple[1]);
+        if x == 0 && y == 0 {
+            break
+        } else {
+            vec.push((x, y));
+        }
+    }
+    vec
+}
+```
+これがよい書き方なのかはわからなかった。
+- 入力を考えると、`tuple[0], tuple[1]` は必ずアクセスできるのでよい
+- 入力の終わりには必ず `0 0` が入りそれ以外では `0 0` がないので、 loopを必ず正しい位置で抜けるはず
