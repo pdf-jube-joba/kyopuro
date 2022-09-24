@@ -18,17 +18,26 @@ fn main() {
 }
 
 fn count(a: &[usize]) -> usize {
-    (0..1000).map(|num|{
-        vec![(num  / 100) % 10, (num / 10) % 10, num % 10]
-    }).filter(|num|{
-        let mut index = 0;
-        for i in a {
-            if *i == num[index] {index += 1;}
-            if index == num.len() {return true}
+    let removable = |a: &[usize], b: &[usize]| {
+        let mut j = 0;
+        for &i in a {
+            loop {
+                if j == b.len() {return false;}
+                if i == b[j] {break;}
+                j += 1;
+            }
+            j += 1;
         }
-        false
-    }).count()
-
+        return true;
+    };
+    (0..1000)
+    .map(|num|{
+        vec![(num  / 100) % 10, (num / 10) % 10, num % 10]
+    })
+    .filter(|num: &Vec<usize>|{
+        removable(num, a)
+    })
+    .count()
 }
 
 #[cfg(test)]

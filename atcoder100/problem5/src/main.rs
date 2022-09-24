@@ -9,17 +9,14 @@ fn main() {
 }
 
 fn value(a: usize, b: usize, c: usize, x: usize, y: usize) -> usize {
-    if a + b > 2 * c {
-        let c_num_to_value = |c_num|{
-            let a_num = if x > (c_num / 2) {x - (c_num / 2)} else {0};
-            let b_num = if y > (c_num / 2) {y - (c_num / 2)} else {0};
-            a * a_num + b * b_num + c * c_num
-        };
-        let max = 2 * x + 2 * y;
-        (0..max).map(c_num_to_value).min().unwrap()
-    } else {
-        x * a + y * b
-    }
+    let f = |n|{
+        let l = if x > n {x - n} else {0};
+        let m = if y > n {y - n} else {0};
+        a * l + b * m + c * (2 * n)
+    };
+    std::cmp::min(f(0), 
+        std::cmp::min(f(x), f(y))
+    )
 }
 
 #[cfg(test)]
