@@ -12,20 +12,13 @@ fn main() {
 }
 
 fn vec_par(ms: &[(i32, i32)], ns: &[(i32, i32)]) -> (i32, i32) {
-    vec_par_vec(ms, ns)[0]
-}
-
-fn vec_par_vec(ms: &[(i32, i32)], ns: &[(i32, i32)]) -> Vec<(i32, i32)> {
     ns.iter().filter_map(|x|{
         let par = (x.0 - ms[0].0 , x.1 - ms[0].1);
-        let ms2: Vec<(i32, i32)> = ms.iter().map(|y|{
-            (y.0 + par.0, y.1 + par.1)
-        }).collect();
-        let result = ms2.into_iter().all(|y|{
-            ns.into_iter().any(|z|{y.0 == z.0 && y.1 == z.1})
-        });
+        let result = ms.iter()
+            .map(|y| (y.0 + par.0, y.1 + par.1))
+            .all(|y| ns.contains(&y));
         if result {Some(par)} else {None}
-    }).collect()
+    }).next().unwrap()
 }
 
 #[cfg(test)]
