@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 fn main() {
     proconio::input! {
         n: usize,
@@ -8,23 +10,22 @@ fn main() {
 
 }
 
-fn output(a: &[(i32, i32)]) -> usize {
-    let mut max = 0;
-    for x1 in a {
-        for x2 in a {
-            let v: (i32, i32) = (x2.1 - x1.1, - (x2.0 - x1.0));
-            let x3: (i32, i32) = (x1.0 + v.0, x1.1 + v.1);
-            let x4: (i32, i32) = (x2.0 + v.0, x2.1 + v.1);
-            let result =
-                a.into_iter().any(|y|{y.0 == x3.0 && y.1 == x3.1}) &&
-                a.into_iter().any(|y|{y.0 == x4.0 && y.1 == x4.1});
-            let area = (x1.0 - x2.0).pow(2) + (x1.1 - x2.1).pow(2);
-            if result {
-                max = std::cmp::max(max, area);
-            }
-        }
-    }
-    max.try_into().unwrap()
+fn output(p: &[(i32, i32)]) -> usize {
+    let p: HashSet<(i32, i32)> = HashSet::from_iter(p.iter().cloned());
+    p.iter()
+    .flat_map(|i|{
+        p.iter().map(move |j|{(i,j)})
+    })
+    .filter_map(|(&x1,&x2)|{
+        let v: (i32, i32) = (x2.1 - x1.1, - (x2.0 - x1.0));
+        let x3: (i32, i32) = (x1.0 + v.0, x1.1 + v.1);
+        let x4: (i32, i32) = (x2.0 + v.0, x2.1 + v.1);
+        if p.contains(&x3) && p.contains(&x4) {
+            Some(((x1.0 - x2.0).pow(2) + (x1.1 - x2.1).pow(2)) as usize)
+        } else {None}
+    })
+    .max()
+    .unwrap()
 }
 
 #[cfg(test)]
