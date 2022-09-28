@@ -2,13 +2,13 @@ fn main() {
     proconio::input! {
         n: usize,
         a: [usize; n],
-        m: usize,
-        q: [usize; m],
+        q: usize,
+        m: [usize; q],
     }
 
-    (0..m).for_each(|i|{
+    (0..q).for_each(|i|{
         println!("{}",
-            if make(&a, q[i]) {"yes"} else {"no"}
+            if make(&a, m[i]) {"yes"} else {"no"}
         );
     });
 
@@ -21,13 +21,14 @@ fn make(a: &[usize], m: usize) -> bool {
         }).collect()
     }
     let n = a.len();
-    for bits in (0..(1 << n)).map(|i|{convert(n, i)}) {
-        let sum: usize = (0..n).map(|i|{
-            if bits[i] {a[i]} else {0}
-        }).sum();
-        if sum == m {return true;}
-    }
-    return false
+    (0.. (1 << n))
+    .map(|i| convert(n,i))
+    .any(|bits|{
+        (0..n)
+        .filter(|&i| bits[i])
+        .map(|i|a[i])
+        .sum::<usize>() == m
+    })
 }
 
 #[cfg(test)]

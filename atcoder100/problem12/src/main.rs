@@ -14,15 +14,20 @@ fn count(n: usize, rel: &[(usize, usize)]) -> usize {
             a & (1 << i) != 0
         }).collect()
     }
-    (0..(1 << n)).map(|i| convert(n, i)).filter_map(|bits|{
-        let all: Vec<(usize, usize)> = (0..n).map(|i|{
-            (i+1..n).map(move |x|{(i, x)})
-        }).flatten().filter(|(i,j)|{bits[*i] && bits[*j]}).collect();
-        let result = all.iter().all(|(i,j)|{
-            rel.iter().any(|(x,y)|{*x - 1 == *i && *y - 1 == *j})
-        });
-        if result {Some(bits.iter().filter(|b|**b).count())} else {None}
-    }).max().unwrap()
+    let rel: Vec<(usize, usize)> = rel.iter().map(|&(i,j)| (i-1, j-1)).collect();
+    (0..(1 << n)).map(|i| convert(n, i))
+    .filter(|bits|{
+        (0..n)
+        .flat_map(|x|{
+            (x+1..n).map(move |y|(x,y))
+        })
+        .filter(|&(i,j)| bits[i] && bits[j])
+        .all(|xy| rel.contains(&xy))
+    })
+    .map(|bits| 
+        bits.iter().filter(|b|**b).count()
+    )
+    .max().unwrap()
 }
 
 #[cfg(test)]

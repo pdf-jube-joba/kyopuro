@@ -16,11 +16,12 @@ fn count(n: usize, s: &[Vec<usize>], p: &[usize]) -> usize {
         }).collect()
     }
     let m = s.len();
-    (0..(1 << n)).map(|i|convert(n, i)).filter(|bits|{
-        let switch_pushed: Vec<usize> = s.iter().map(|switches|{
-            switches.iter().filter(|switch|{bits[**switch-1]}).count()
-        }).collect();
-        (0..m).all(|i|{switch_pushed[i] % 2 == p[i]})
+    (0..(1 << n))
+    .map(|i|convert(n, i))
+    .filter(|bits|{
+        (0..m).all(|i|{
+            s[i].iter().filter(|switch|bits[**switch-1]).count() % 2 == p[i]
+        })
     }).count()
 }
 

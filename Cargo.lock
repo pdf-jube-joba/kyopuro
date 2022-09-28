@@ -185,6 +185,20 @@ name = "problem27"
 version = "0.1.0"
 
 [[package]]
+name = "problem28"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problem29"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
 name = "problem7"
 version = "0.1.0"
 dependencies = [
