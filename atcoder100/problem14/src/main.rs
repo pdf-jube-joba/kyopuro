@@ -17,17 +17,17 @@ fn minimize(a: &[usize], k: usize) -> usize {
         }).collect()
     }
     let n = a.len();
-    (0..(1 << n)).map(|i|{convert(n, i)}).filter_map(|bits|{
-        if !(bits.iter().filter(|b|**b).count() < k) {
-            let mut b: Vec<usize> = vec![0; n];
-            let mut now = 0;
-            (0..n).for_each(|i|{
-                if bits[i] && now > a[i] { b[i] = now - a[i] + 1; }
-                now = std::cmp::max(now, a[i] + b[i])
-            });
-            let sum = b.iter().sum();
-            Some(sum)
-        } else {None}
+    (0..(1 << n))
+    .map(|i|{convert(n, i)})
+    .filter(|bits| bits.iter().filter(|&&b|b).count() >= k)
+    .map(|bits|{
+        let mut b: Vec<usize> = vec![0; n];
+        let mut now = 0;
+        (0..n).for_each(|i|{
+            if bits[i] && now >= a[i] { b[i] = now - a[i] + 1; }
+            now = std::cmp::max(now, a[i] + b[i])
+        });
+        b.iter().sum()
     }).min().unwrap()
 }
 

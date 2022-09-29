@@ -21,12 +21,13 @@ fn maximize(a: &[Vec<bool>]) -> usize {
     }
     let r = a.len();
     let c = a[0].len(); // a[i].len() == a[j].len()
-    (0..(1 << r)).map(|i|(convert(r, i))).map(|bits|{
-        let a: Vec<Vec<bool>> = a.into_iter().enumerate().map(|(i, vec)|{
-            vec.into_iter().map(|j|{bits[i] ^ j}).collect()
-        }).collect();
-        (0..c).map(|i|{
-            let count = (0..r).filter(|j|{a[*j][i]}).count();
+    (0..(1 << r))
+    .map(|i|(convert(r, i)))
+    .map(|bits|{
+        (0..c).map(|j|{
+            let count = (0..r)
+                .filter(|&i| a[i][j] ^ bits[i])
+                .count();
             std::cmp::max(count, r - count)
         }).sum()
     }).max().unwrap()
