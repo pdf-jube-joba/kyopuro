@@ -241,6 +241,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "problem36"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problem37"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problem38"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problem39"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problem40"
+version = "0.1.0"
+
+[[package]]
 name = "problem7"
 version = "0.1.0"
 dependencies = [
