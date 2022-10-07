@@ -10,35 +10,30 @@ fn main() {
 
 fn permutation(n: usize) -> impl Iterator<Item = Vec<usize>> {
     struct Perm {
-        n: usize,
-        perm: Option<Vec<usize>>,
+        permutation: Vec<usize>,
     }
     impl Iterator for Perm {
         type Item = Vec<usize>;
         fn next(&mut self) -> Option<Self::Item> {
-            if let Some(a) = &mut self.perm {
-                let n = self.n;
-                let max_index = match (0..n-1).filter(|i|{a[*i] < a[i+1]}).max() {
-                    Some(i) => i,
-                    None => {return None;}
-                };
-                let swap_index = {
-                    (max_index+1..n).filter(|i|{a[*i] > a[max_index]}).max().unwrap()
-                };
-                { // swap a[max_index] and a[swap_index]
-                    let temp = a[max_index];
-                    a[max_index] = a[swap_index];
-                    a[swap_index] = temp;
-                }
-                a[max_index+1..n].reverse();
-                Some(a.clone())
-            } else {
-                self.perm = Some((0..self.n).collect());
-                self.perm.clone()
+            let result = Some(self.permutation.clone());
+            let n = self.permutation.len();
+            let max_index = match (0..n-1).filter(|&i|{self.permutation[i] < self.permutation[i+1]}).max() {
+                Some(i) => i,
+                None => {return None;}
+            };
+            let swap_index = {
+                (max_index+1..n).filter(|&i|{self.permutation[i] > self.permutation[max_index]}).max().unwrap()
+            };
+            { // swap a[max_index] and a[swap_index]
+                let temp = self.permutation[max_index];
+                self.permutation[max_index] = self.permutation[swap_index];
+                self.permutation[swap_index] = temp;
             }
+            self.permutation[max_index+1..n].reverse();
+            return result;
         }
     }
-    Perm {n: n, perm: None}
+    Perm {permutation: (0..n).collect()}
 }
 
 fn average(xy: &[(usize, usize)]) -> f32 {
