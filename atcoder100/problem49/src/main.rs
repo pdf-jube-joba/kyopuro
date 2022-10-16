@@ -6,25 +6,33 @@ fn main() {
         in1: [(usize, usize, usize); e],
     }
     let std = in1.into_iter().map(|(x,y,z)| ((x,y),z)).collect();
-    println!("{}", minimize(v, &std))
+    println!("{}", match minimize(v, &std) {Some(result) => result as isize, None => -1})
 }
 
-fn minimize(v: usize, std: &HashMap<(usize, usize), usize>) -> usize {
+fn minimize(v: usize, std: &HashMap<(usize, usize), usize>) -> Option<usize> {
     let mut dp: HashMap<(Vec<bool>, usize), Option<usize>> = HashMap::new();
 
-    fn min_rec(std: &HashMap<(usize, usize), usize>, dp: &mut HashMap<(Vec<bool>, usize), Option<usize>>, (subset, goal): (Vec<bool>, usize)) -> Option<usize> {
+    fn min_rec(
+        std: &HashMap<(usize, usize), usize>,
+        dp: &mut HashMap<(Vec<bool>, usize), Option<usize>>,
+        (subset, goal): (Vec<bool>, usize)
+    ) -> Option<usize> {
         assert!(subset[goal]);
-        if subset.iter().filter(|b| **b).count() == 1 {
-            dp.insert((subset.clone(), goal), Some(0));
-            return Some(0);
-        }
+
         if let Some(cost) = (*dp).get(&(subset.clone(), goal)) {return *cost;}
+
+        if subset.iter().filter(|b| **b).count() == 1 {
+            let result = if goal == 0 {Some(0)} else {None};
+            dp.insert((subset.clone(), goal), result);
+            return result;
+        }
 
         let next_subset = {
             let mut next_subset = subset.clone();
             next_subset[goal] = false;
             next_subset
         };
+
         let result = next_subset
         .iter().enumerate()
         .flat_map(|(i, &b)|{
@@ -34,9 +42,7 @@ fn minimize(v: usize, std: &HashMap<(usize, usize), usize>) -> usize {
             let v1 = min_rec(std, dp, (next_subset, i));
             let v2 = std.get(&(i, goal)).cloned();
             match (v1, v2) {
-                (Some(cost1), Some(cost2)) => {
-                    Some(cost1 + cost2)
-                }
+                (Some(cost1), Some(cost2)) => Some(cost1 + cost2),
                 _ => None
             }
         })
@@ -55,8 +61,8 @@ fn minimize(v: usize, std: &HashMap<(usize, usize), usize>) -> usize {
         }
     })
     .min();
-    println!("{:?}", dp);
-    result.unwrap()
+
+    result
 
 }
 
@@ -71,7 +77,14 @@ mod tests {
             ((1,2), 1),
             ((2,0), 1),
         ].into_iter().collect();
-        assert_eq!(minimize(n, &std), 3);
+        assert_eq!(minimize(n, &std), Some(3));
+        let n = 3;
+        let std: HashMap<(usize, usize), usize> = vec![
+            ((0,1), 1),
+            ((1,2), 2),
+            ((2,0), 1),
+        ].into_iter().collect();
+        assert_eq!(minimize(n, &std), Some(4));
     }
     #[test]
     fn minimize_test(){
@@ -84,6 +97,6 @@ mod tests {
             (2,3,6),
             (3,2,4),
         ].into_iter().map(|(x,y,z)| ((x,y), z)).collect();
-        assert_eq!(minimize(n, &std), 16);
+        assert_eq!(minimize(n, &std), Some(16));
     }
 }
