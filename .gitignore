@@ -1,4 +1,4 @@
 target/
-in/
-out/
+input/
+output/
 test_other/
