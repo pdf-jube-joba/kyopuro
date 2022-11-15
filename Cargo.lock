@@ -9,308 +9,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
-name = "problem100_1"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_10"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_11"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_12"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_13"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_14"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_15"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_16"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_17"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_18"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_2"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_3"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_4"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_5"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_6"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_8"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem100_9"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem19"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem20"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem21"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem22"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem23"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem24"
-version = "0.1.0"
-
-[[package]]
-name = "problem25"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem26"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem27"
-version = "0.1.0"
-
-[[package]]
-name = "problem28"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem29"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem30"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem31"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem32"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem33"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem34"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem35"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem36"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem37"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem38"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem39"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem40"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem41"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem42"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem43"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem44"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
-name = "problem45"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
 name = "problem46"
 version = "0.1.0"
 dependencies = [
@@ -346,14 +44,77 @@ dependencies = [
 ]
 
 [[package]]
-name = "problem7"
+name = "problem90_1"
 version = "0.1.0"
 dependencies = [
  "proconio",
 ]
 
 [[package]]
-name = "problem90_1"
+name = "problems1"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problems10"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problems2"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problems3"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problems4"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problems5"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problems6"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problems7"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problems8"
+version = "0.1.0"
+dependencies = [
+ "proconio",
+]
+
+[[package]]
+name = "problems9"
 version = "0.1.0"
 dependencies = [
  "proconio",
@@ -374,3 +135,7 @@ version = "0.1.0"
 dependencies = [
  "proconio",
 ]
+
+[[package]]
+name = "timewith"
+version = "0.1.0"
