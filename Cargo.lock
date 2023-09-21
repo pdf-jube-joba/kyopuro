@@ -95,12 +95,5 @@ dependencies = [
 ]
 
 [[package]]
-name = "test_other"
-version = "0.1.0"
-dependencies = [
- "proconio",
-]
-
-[[package]]
 name = "timewith"
 version = "0.1.0"

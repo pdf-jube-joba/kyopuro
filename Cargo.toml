@@ -1,17 +1,7 @@
 [workspace]
 
 members = [
-    "test_other",
     "timewith",
-    "tenkei90/problem1",
-    "atcoder100/problems1",
-    "atcoder100/problems2",
-    "atcoder100/problems3",
-    "atcoder100/problems4",
-    "atcoder100/problems5",
-    "atcoder100/problems6",
-    "atcoder100/problems7",
-    "atcoder100/problems8",
-    "atcoder100/problems9",
-    "atcoder100/problems10",
+    "tenkei90/*",
+    "atcoder100/*",
 ]
