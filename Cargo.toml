@@ -1,7 +1,0 @@
-[workspace]
-
-members = [
-    "timewith",
-    "tenkei90/*",
-    "atcoder100/*",
-]

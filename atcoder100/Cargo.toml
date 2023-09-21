@@ -1,0 +1,14 @@
+[workspace]
+
+members = [
+    "problems1/",
+    "problems2/",
+    "problems3/",
+    "problems4/",
+    "problems5/",
+    "problems6/",
+    "problems7/",
+    "problems8/",
+    "problems9/",
+    "problems10/",
+]
