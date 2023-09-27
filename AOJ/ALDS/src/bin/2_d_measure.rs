@@ -4,41 +4,58 @@ fn main() {
     let a = gen();
     let n = a.len();
 
-    let power_2 = cut_and_rev(n, |i: usize| 2_usize.pow(i as u32));
-    let power_3 = cut_and_rev(n, |i: usize| 3_usize.pow(i as u32));
-    let power_e = cut_and_rev(n, |i: usize| {
-        std::f64::consts::E.powf(i as f64) as usize
-    });
-    let e_frac = cut_and_rev(n, |i: usize| {
-        if i == 0 {
-            1
-        } else {
-            std::f64::consts::E.powf((i + 1) as f64) as usize / 2
-        }
-    });
-    let knuth = cut_and_rev(n, |i: usize| (3_usize.pow(i as u32) - 1) / 2);
+    // let power_2 = cut_and_rev(n, |i: usize| 2_usize.pow(i as u32));
+    // let power_3 = cut_and_rev(n, |i: usize| 3_usize.pow(i as u32));
+    // let power_e = cut_and_rev(n, |i: usize| {
+    //     std::f64::consts::E.powf(i as f64) as usize
+    // });
+    // let e_frac = cut_and_rev(n, |i: usize| {
+    //     if i == 0 {
+    //         1
+    //     } else {
+    //         std::f64::consts::E.powf((i + 1) as f64) as usize / 2
+    //     }
+    // });
+    // let knuth = cut_and_rev(n, |i: usize| (3_usize.pow(i as u32) - 1) / 2);
 
     let mut b = a.clone();
 
-    print!("power 2");
-    measure(&mut b, &power_2);
+    // print!("power 2");
+    // measure(&mut b, &power_2);
 
-    b = a.clone();
-    print!("power 3");
-    measure(&mut b, &power_3);
+    // b = a.clone();
+    // print!("power 3");
+    // measure(&mut b, &power_3);
     
-    b = a.clone();
-    print!("power e");
-    measure(&mut b, &power_e);
+    // b = a.clone();
+    // print!("power e");
+    // measure(&mut b, &power_e);
     
-    b = a.clone();
-    print!("e^k/2");
-    measure(&mut b, &e_frac);
+    // b = a.clone();
+    // print!("e^k/2");
+    // measure(&mut b, &e_frac);
     
-    b = a.clone();
-    print!("(3^k-1)/2");
-    measure(&mut b, &knuth);
-    
+    // b = a.clone();
+    // print!("(3^k-1)/2");
+    // measure(&mut b, &knuth);
+
+    println!("start");
+
+    let mut s: f64 = 1_f64;
+    loop {
+        s += 0.05_f64;
+        b = a.clone();
+        println!("get pow");
+        let power_a = cut_and_rev(n, power_a(s));
+        println!("power {}", s);
+        measure(&mut b, &power_a);
+    }
+}
+
+fn power_a(a:f64) -> Box<dyn Fn(usize) -> usize> {
+    Box::new(move |i: usize| {
+        a.powf(i as f64) as usize
+    })
 }
 
 fn measure(a: &mut[usize], g: &[usize]) {
