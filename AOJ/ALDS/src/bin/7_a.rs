@@ -30,7 +30,7 @@ impl Tree {
     }
     fn shift_depth(&mut self, depth: usize) {
         self.depth += depth;
-        self.children.iter().map(|ref_tree| ref_tree.borrow().shift_depth(depth));
+        self.children.iter().map(|ref_tree| ref_tree.borrow_mut().shift_depth(depth));
     }
     fn appered_id(&self) -> Vec<usize> {
         let mut v = vec![self.id];
@@ -41,14 +41,17 @@ impl Tree {
     }
     fn get_ref_from_id(&self, id: usize) -> Option<&Tree> {
         if self.id == id {
-            Some(&self)
+            Some(self)
         } else {
-            None
+            self.children.iter().find_map(|ref_tree| { 
+                let t: &Tree = &ref_tree.borrow();
+                t.get_ref_from_id(id)
+            })
         }
     }
     fn get_mut_from_id(&mut self, id: usize) -> Option<&mut Tree> {
         if self.id == id {
-            Some(&mut self)
+            Some(self)
         } else {
             None
         }
@@ -119,71 +122,74 @@ fn construct_from_child_ids_rec(children_ids: &[Vec<usize>], id: usize) -> Optio
     ))
 }
 
-// fn construct_from_child_ids(children_ids: Vec<Vec<usize>>) -> Option<Tree> {
-//     let n = children_ids.len();
-//     if n == 0 {
-//         return None;
-//     }
+fn construct_from_child_ids(children_ids: Vec<Vec<usize>>) -> Option<Tree> {
+    let n = children_ids.len();
+    if n == 0 {
+        return None;
+    }
 
-//     let parent_id: usize = {
-//         let mut is_children = vec![false; n];
-//         for i in 0..n {
-//             children_ids[i].iter().for_each(|i|{
-//                 is_children[*i] = true;
-//             })
-//         }
-//         is_children.into_iter().enumerate().find_map(|(i, b)| if !b { Some(i) } else { None }).unwrap()
-//     };
+    let parent_id: usize = {
+        let mut is_children = vec![false; n];
+        for i in 0..n {
+            children_ids[i].iter().for_each(|i|{
+                is_children[*i] = true;
+            })
+        }
+        is_children.into_iter().enumerate().find_map(|(i, b)| if !b { Some(i) } else { None }).unwrap()
+    };
 
-//     // construct trees whose parent is not setted
-//     let mut tree_not_setted_parent: Tree = {
-//         let mut trees: Vec<Option<Tree>> = vec![None; n];
-//         let mut stack = vec![parent_id];
+    // construct trees whose parent is not setted
+    let mut tree_not_setted_parent: Tree = {
+        let mut trees: Vec<Option<Tree>> = vec![None; n];
+        let mut stack = vec![parent_id];
 
-//         while let Some(next_id) = stack.pop() {
-//             // leaf case
-//             if children_ids[next_id].is_empty() {
-//                 trees[next_id] = Some(Tree {
-//                     id: next_id,
-//                     parent: None,
-//                     children: vec![],
-//                 });
-//             // other case
-//             } else {
-//                 let mut this_tree = Tree {
-//                     id: next_id,
-//                     parent: None,
-//                     children: vec![],
-//                 };
+        while let Some(next_id) = stack.pop() {
+            // leaf case
+            if children_ids[next_id].is_empty() {
+                trees[next_id] = Some(Tree {
+                    id: next_id,
+                    depth: 0,
+                    parent: None,
+                    children: vec![],
+                });
+            // other case
+            } else {
+                let mut this_tree = Tree {
+                    id: next_id,
+                    depth: 0,
+                    parent: None,
+                    children: vec![],
+                };
 
-//                 let unconstructed_children_id = children_ids[next_id].iter().filter(|cid| trees[**cid].is_none()).collect::<Vec<_>>();
-//                 // children is already constructed
-//                 if unconstructed_children_id.is_empty() {
-//                     let children_trees: Vec<Rc<RefCell<Tree>>> = children_ids[next_id].iter().map(
-//                         |cid| {
-//                             let tree: Tree = trees[*cid].take().unwrap();
-//                             Rc::new(RefCell::new(tree))
-//                         }
-//                     ).collect();
+                let unconstructed_children_id = children_ids[next_id].iter().filter(|cid| trees[**cid].is_none()).collect::<Vec<_>>();
+                // children is already constructed
+                if unconstructed_children_id.is_empty() {
+                    let children_trees: Vec<Rc<RefCell<Tree>>> = children_ids[next_id].iter().map(
+                        |cid| {
+                            let tree: Tree = trees[*cid].take().unwrap();
+                            Rc::new(RefCell::new(tree))
+                        }
+                    ).collect();
 
-//                     trees[next_id] = Some(Tree {
-//                         id: next_id,
-//                         parent: None,
-//                         children: children_trees,
-//                     })
-//                 } else {
-//                     stack.push(next_id);
-//                     stack.extend(unconstructed_children_id);
-//                 }
-//             }
-//         }
+                    trees[next_id] = Some(Tree {
+                        id: next_id,
+                        depth: 0,
+                        parent: None,
+                        children: children_trees,
+                    })
+                } else {
+                    stack.push(next_id);
+                    stack.extend(unconstructed_children_id);
+                }
+            }
+        }
 
-//         // Some variant of Option is parent (only one is some)
-//         trees.into_iter().find_map(|tree| tree)
-//     }?;
+        // Some variant of Option is parent (only one is some)
+        trees.into_iter().find_map(|tree| tree)
+    }?;
 
-//     Some(tree_not_setted_parent)
-// }
+    Some(tree_not_setted_parent)
+}
 
 fn main() {
     let tree = input();
