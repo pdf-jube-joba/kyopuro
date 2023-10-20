@@ -6,16 +6,19 @@ use std::collections::VecDeque;
 struct Tree {
     id: usize,
     depth: usize,
-    parent: Option<Rc<RefCell<Tree>>>,
+    parent: Weak<RefCell<Tree>>,
     children: Vec<Rc<RefCell<Tree>>>,
 }
 
 impl Tree {
-    fn id(self) -> usize {
+    fn id(&self) -> usize {
         self.id
     }
-    fn depth(self) -> usize {
+    fn depth(&self) -> usize {
         self.depth
+    }
+    fn parent(&self) -> Option<&Tree> {
+        self.parent
     }
 }
 

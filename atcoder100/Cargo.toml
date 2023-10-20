@@ -12,3 +12,5 @@ members = [
     "problems9/",
     "problems10/",
 ]
+
+resolver = "2"
