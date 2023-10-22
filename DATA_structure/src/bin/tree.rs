@@ -23,6 +23,71 @@ impl Tree {
     fn children(&self) -> &[Rc<RefCell<Tree>>] {
         &self.children
     }
+    fn is_root(&self) -> bool {
+        self.parent().is_none()
+    }
+    fn is_internal_node(&self) -> bool {
+        !self.children().is_empty()
+    }
+    fn is_leaf(&self) -> bool {
+        self.children().is_empty()
+    }
+}
+
+fn from_child(
+    child_ids: Vec<Vec<usize>>
+) -> Option<Rc<RefCell<Tree>>> {
+    let n = child_ids.len();
+    let parent_id = {
+        let mut v = vec![true; n];
+        for cids in &child_ids {
+            for cid in cids {
+                v[*cid] = false;
+            }
+        }
+        v.into_iter().enumerate().find_map(|(i, b)|
+            if b { Some(i) } else { None }
+        )?
+    };
+
+    let mut this_tree = new(parent_id);
+
+    let mut queue = VecDeque::new();
+    queue.push_back(parent_id);
+    while let Some(next_id) = queue.pop_front() {
+        let rcref_tree = search_from_id(&this_tree, next_id)?;
+        let copied: &[usize] = &child_ids[rcref_tree.borrow().id];
+        for &cid in copied {
+            insert_part(&mut this_tree, next_id, new(cid));
+            queue.push_back(cid);
+        }
+    }
+    eprintln!("normalize start");
+    normalize(&mut this_tree);
+
+    Some(this_tree)
+}
+
+fn max_id(tree: &Rc<RefCell<Tree>>) -> usize {
+    let c_max = tree.borrow().children.iter().map(|rc|{
+        max_id(rc)
+    }).max();
+    if let Some(max) = c_max {
+        std::cmp::max(max, tree.borrow().id())
+    } else {
+        tree.borrow().id()
+    }
+}
+
+fn new(
+    id: usize
+) -> Rc<RefCell<Tree>> {
+    Rc::new(RefCell::new(Tree { 
+        id,
+        depth: RefCell::new(0),
+        parent: Weak::new(),
+        children: vec![]
+    }))
 }
 
 fn new_rcref_tree(
@@ -30,32 +95,34 @@ fn new_rcref_tree(
     depth: usize,
     children: Vec<Rc<RefCell<Tree>>>,
 ) -> Rc<RefCell<Tree>> {
-    Rc::new(RefCell::new(Tree { 
+    let mut this_tree = Rc::new(RefCell::new(Tree { 
         id,
         depth: RefCell::new(depth),
         parent: Weak::new(),
-        children
-    }))
+        children,
+    }));
+    normalize(&mut this_tree);
+    this_tree
 }
 
-fn search_from_id(tree: Rc<RefCell<Tree>>, id: usize) -> Option<Rc<RefCell<Tree>>> {
+fn search_from_id(tree: &Rc<RefCell<Tree>>, id: usize) -> Option<Rc<RefCell<Tree>>> {
     if tree.borrow().id == id {
-        Some(tree.clone())
+        Some(Rc::clone(tree))
     } else {
         tree.borrow().children.iter().find_map(|refcell_rc_tree|{
-            search_from_id(refcell_rc_tree.clone(), id)
+            search_from_id(refcell_rc_tree, id)
         })
     }
 }
 
-fn insert(mut tree: Rc<RefCell<Tree>>, id: usize, child: Rc<RefCell<Tree>>) {
-    let mut ref_to_tree = search_from_id(tree, id);
+fn insert_part(tree: &mut Rc<RefCell<Tree>>, id: usize, child: Rc<RefCell<Tree>>) {
+    let ref_to_tree = search_from_id(&tree, id);
     if let Some(mut rc_tree) = ref_to_tree {
         rc_tree.borrow_mut().children.push(child);
     }
 }
 
-fn depth_calc(mut tree: Rc<RefCell<Tree>>) {    
+fn depth_calc(tree: &mut Rc<RefCell<Tree>>) {    
     let mut depth_stack: Vec<(Rc<RefCell<Tree>>, usize)> = vec![(Rc::clone(&tree), 0)];
     while let Some((tree, depth)) = depth_stack.pop() {
         *tree.borrow_mut().depth.borrow_mut() = depth;
@@ -65,7 +132,7 @@ fn depth_calc(mut tree: Rc<RefCell<Tree>>) {
     }
 }
 
-fn parent_calc(mut tree: Rc<RefCell<Tree>>) {
+fn parent_calc(tree: &mut Rc<RefCell<Tree>>) {
     let mut parent_stack: Vec<(Rc<RefCell<Tree>>, Weak<_>)> = vec![(Rc::clone(&tree), Weak::new())];
     while let Some((tree, parent)) = parent_stack.pop() {
         tree.borrow_mut().parent = parent;
@@ -75,15 +142,44 @@ fn parent_calc(mut tree: Rc<RefCell<Tree>>) {
     }
 }
 
+fn normalize(tree: &mut Rc<RefCell<Tree>>) {
+    parent_calc(tree);
+    depth_calc(tree);
+}
+
 fn main() {
     let children_ids = input();
+    let tree = from_child(children_ids).unwrap();
+    let max_id = max_id(&tree);
+    for id in 0..=max_id {
+        let tree = search_from_id(&tree, id).unwrap();
+        println!(
+            "node {}: parent = {}, depth = {}, {}, [{}]",
+            id,
+            if let Some(parent) = tree.borrow().parent() {
+                parent.borrow().id().to_string()
+            } else {
+                "-1".to_owned()
+            },
+            tree.borrow().depth(),
+            if tree.borrow().is_root() {
+                "root"
+            } else if tree.borrow().is_internal_node() {
+                "internal node"
+            } else {
+                assert!(tree.borrow().is_leaf());
+                "leaf"
+            },
+            tree.borrow().children().iter().map(|child| child.borrow().id().to_string()).collect::<Vec<String>>().join(", ")
+        );
+    }
 }
 
 fn input() -> Vec<Vec<usize>> {
     let stdin = std::io::stdin();
     let mut buf = String::new();
     stdin.read_line(&mut buf).unwrap();
-    let n = buf.parse::<usize>().unwrap();
+    let n = buf.trim().parse::<usize>().unwrap();
     
     let mut v: Vec<(usize, Vec<usize>)> = (0..n).map(|_|{
         buf.clear();
@@ -91,7 +187,7 @@ fn input() -> Vec<Vec<usize>> {
         let mut words = buf.split_whitespace();
         let id: usize = words.next().unwrap().parse::<usize>().unwrap();
         let _k: usize = words.next().unwrap().parse::<usize>().unwrap();
-        let c: Vec<usize> = words.into_iter().map(|word| word.parse::<usize>().unwrap()).collect();
+        let c: Vec<usize> = words.map(|word| word.parse::<usize>().unwrap()).collect();
         (id, c)
     }).collect();
     v.sort_by(|v1, v2| v1.0.cmp(&v2.0));
@@ -103,11 +199,35 @@ mod tests {
     use super::*;
     #[test]
     fn tree_test() {
-        let t1 = new_rcref_tree(0, 0, vec![]);
-        assert!(search_from_id(Rc::clone(&t1), 0).is_some());
+        let mut t1 = new(0);
+        assert!(search_from_id(&t1, 0).is_some());
 
-        let t2 = new_rcref_tree(1, 0, vec![]);
-        insert(Rc::clone(&t1), 0, t2);
-        eprintln!("{t1:?}");
+        insert_part(&mut t1, 0, new(1));
+        insert_part(&mut t1, 0, new(2));
+        insert_part(&mut t1, 1, new(3));
+    }
+    #[test]
+    fn tree_depth_test() {
+        let child_ids = vec![
+            vec![1],
+            vec![],
+        ];
+        let t = from_child(child_ids).unwrap();
+        eprintln!("{t:?}");
+
+        let child_ids = vec![
+            vec![],
+            vec![0],
+        ];
+        let t = from_child(child_ids).unwrap();
+        eprintln!("{t:?}");
+    }
+    #[test]
+    fn child_test() {
+        let mut child_ids = vec![
+            (1..100_000).collect(),
+        ];
+        child_ids.extend(vec![vec![]; 100_000]);
+        let t = from_child(child_ids).unwrap();
     }
 }
