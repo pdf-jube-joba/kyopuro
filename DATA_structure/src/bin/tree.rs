@@ -1,3 +1,5 @@
+use std::io::Read;
+use std::os::fd::AsFd;
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -53,16 +55,16 @@ fn from_child(
     let mut this_tree = new(parent_id);
 
     let mut queue = VecDeque::new();
-    queue.push_back(parent_id);
-    while let Some(next_id) = queue.pop_front() {
-        let rcref_tree = search_from_id(&this_tree, next_id)?;
-        let copied: &[usize] = &child_ids[rcref_tree.borrow().id];
+    queue.push_back(Rc::clone(&this_tree));
+    while let Some(mut tree) = queue.pop_front() {
+        // let mut rcref_tree = search_from_id(&this_tree, next_id)?;
+        let copied: &[usize] = &child_ids[tree.borrow().id];
         for &cid in copied {
-            insert_part(&mut this_tree, next_id, new(cid));
-            queue.push_back(cid);
+            let t = new(cid);
+            queue.push_back(Rc::clone(&t));
+            insert_this(&mut tree, t);
         }
     }
-    eprintln!("normalize start");
     normalize(&mut this_tree);
 
     Some(this_tree)
@@ -115,6 +117,10 @@ fn search_from_id(tree: &Rc<RefCell<Tree>>, id: usize) -> Option<Rc<RefCell<Tree
     }
 }
 
+fn insert_this(tree: &mut Rc<RefCell<Tree>>, child: Rc<RefCell<Tree>>) {
+    tree.borrow_mut().children.push(child);
+}
+
 fn insert_part(tree: &mut Rc<RefCell<Tree>>, id: usize, child: Rc<RefCell<Tree>>) {
     let ref_to_tree = search_from_id(&tree, id);
     if let Some(mut rc_tree) = ref_to_tree {
@@ -148,7 +154,10 @@ fn normalize(tree: &mut Rc<RefCell<Tree>>) {
 }
 
 fn main() {
-    let children_ids = input();
+    let children_ids = input_str(&input(std::io::stdin()));
+    if children_ids.len() >= 100 {
+        println!("hello");
+    }
     let tree = from_child(children_ids).unwrap();
     let max_id = max_id(&tree);
     for id in 0..=max_id {
@@ -175,23 +184,24 @@ fn main() {
     }
 }
 
-fn input() -> Vec<Vec<usize>> {
-    let stdin = std::io::stdin();
-    let mut buf = String::new();
-    stdin.read_line(&mut buf).unwrap();
-    let n = buf.trim().parse::<usize>().unwrap();
-    
-    let mut v: Vec<(usize, Vec<usize>)> = (0..n).map(|_|{
-        buf.clear();
-        stdin.read_line(&mut buf).unwrap();
-        let mut words = buf.split_whitespace();
+fn input<T: std::io::Read>(mut input: T) -> String {
+    let mut string = String::new();
+    input.read_to_string(&mut string).unwrap();
+    string
+}
+
+fn input_str(str: &str) -> Vec<Vec<usize>> {
+    let mut lines = str.lines();
+    let n = lines.next().unwrap().trim().parse::<usize>().unwrap();
+    let mut v = vec![vec![]; n];
+    for line in lines {
+        let mut words = line.split_whitespace();
         let id: usize = words.next().unwrap().parse::<usize>().unwrap();
         let _k: usize = words.next().unwrap().parse::<usize>().unwrap();
         let c: Vec<usize> = words.map(|word| word.parse::<usize>().unwrap()).collect();
-        (id, c)
-    }).collect();
-    v.sort_by(|v1, v2| v1.0.cmp(&v2.0));
-    v.into_iter().map(|(_, v)| v).collect()
+        v[id] = c;
+    }
+    v
 }
 
 #[cfg(test)]
@@ -227,7 +237,7 @@ mod tests {
         let mut child_ids = vec![
             (1..100_000).collect(),
         ];
-        child_ids.extend(vec![vec![]; 100_000]);
+        child_ids.extend(vec![vec![]; 99_999]);
         let t = from_child(child_ids).unwrap();
     }
 }
