@@ -1,253 +1,167 @@
-use std::io::Read;
-use std::rc::{Rc, Weak};
-use std::cell::RefCell;
-use std::collections::VecDeque;
-
-#[derive(Debug)]
-struct Tree {
-    id: usize,
-    depth: RefCell<usize>,
-    parent: Weak<RefCell<Tree>>,
-    children: Vec<Rc<RefCell<Tree>>>,
+#[derive(Debug, Clone)]
+struct Arena {
+    nodes: Vec<Node>,
 }
 
-impl Tree {
-    fn id(&self) -> usize {
-        self.id
-    }
-    fn depth(&self) -> usize {
-        *self.depth.borrow()
-    }
-    fn parent(&self) -> Option<Rc<RefCell<Tree>>> {
-        self.parent.upgrade()
-    }
-    fn children(&self) -> &[Rc<RefCell<Tree>>] {
-        &self.children
-    }
-    fn is_root(&self) -> bool {
-        self.parent().is_none()
-    }
-    fn is_internal_node(&self) -> bool {
-        !self.children().is_empty()
-    }
-    fn is_leaf(&self) -> bool {
-        self.children().is_empty()
-    }
+#[derive(Debug, Clone)]
+struct Node {
+    key: usize,
+    depth: usize,
+    parent: Option<usize>,
+    children: Vec<usize>,
 }
 
-fn from_child(
-    child_ids: Vec<Vec<usize>>
-) -> Option<Rc<RefCell<Tree>>> {
-    let n = child_ids.len();
-    let parent_id = {
-        let mut v = vec![true; n];
-        for cids in &child_ids {
-            for cid in cids {
-                v[*cid] = false;
+impl Arena {
+    fn new(children_ids: Vec<Vec<usize>>) -> Option<Self> {
+        let n = children_ids.len();
+        if n == 0 {
+            return Some(Arena {
+                nodes: vec![]
+            });
+        }
+        let parent_id: usize = {
+            let mut is_children = vec![false; n];
+            for i in 0..n {
+                children_ids[i].iter().for_each(|i|{
+                    is_children[*i] = true;
+                })
+            }
+            is_children.into_iter().enumerate().find_map(|(i, b)| if !b { Some(i) } else { None }).unwrap()
+        };
+
+        let mut nodes: Vec<Option<Node>> = vec![None; n];
+
+        let mut stack = vec![(parent_id, None, 0)];
+
+        while let Some((key, parent, depth)) = stack.pop() {
+            nodes[key] = Some( Node {
+                key,
+                depth,
+                parent,
+                children: children_ids[key].clone(),
+            });
+            for cid in &children_ids[key] {
+                stack.push((*cid, Some(key), depth + 1));
             }
         }
-        v.into_iter().enumerate().find_map(|(i, b)|
-            if b { Some(i) } else { None }
-        )?
-    };
 
-    let mut this_tree = new(parent_id);
+        Some(Arena { nodes: nodes.into_iter().collect::<Option<_>>()? })
 
-    let mut queue = VecDeque::new();
-    queue.push_back(Rc::clone(&this_tree));
-    while let Some(mut tree) = queue.pop_front() {
-        // let mut rcref_tree = search_from_id(&this_tree, next_id)?;
-        let copied: &[usize] = &child_ids[tree.borrow().id];
-        for &cid in copied {
-            let t = new(cid);
-            queue.push_back(Rc::clone(&t));
-            insert_this(&mut tree, t);
-        }
     }
-    normalize(&mut this_tree);
-
-    Some(this_tree)
-}
-
-fn max_id(tree: &Rc<RefCell<Tree>>) -> usize {
-    let c_max = tree.borrow().children.iter().map(|rc|{
-        max_id(rc)
-    }).max();
-    if let Some(max) = c_max {
-        std::cmp::max(max, tree.borrow().id())
-    } else {
-        tree.borrow().id()
+    fn get_index(&self, pointer: usize) -> Option<&Node> {
+        self.nodes.get(pointer)
     }
-}
-
-fn new(
-    id: usize
-) -> Rc<RefCell<Tree>> {
-    Rc::new(RefCell::new(Tree { 
-        id,
-        depth: RefCell::new(0),
-        parent: Weak::new(),
-        children: vec![]
-    }))
-}
-
-fn new_rcref_tree(
-    id: usize,
-    depth: usize,
-    children: Vec<Rc<RefCell<Tree>>>,
-) -> Rc<RefCell<Tree>> {
-    let mut this_tree = Rc::new(RefCell::new(Tree { 
-        id,
-        depth: RefCell::new(depth),
-        parent: Weak::new(),
-        children,
-    }));
-    normalize(&mut this_tree);
-    this_tree
-}
-
-fn search_from_id(tree: &Rc<RefCell<Tree>>, id: usize) -> Option<Rc<RefCell<Tree>>> {
-    if tree.borrow().id == id {
-        Some(Rc::clone(tree))
-    } else {
-        tree.borrow().children.iter().find_map(|refcell_rc_tree|{
-            search_from_id(refcell_rc_tree, id)
-        })
+    fn get_mut_index(&mut self, pointer: usize) -> Option<&mut Node> {
+        self.nodes.get_mut(pointer)
     }
-}
-
-// fn search_from_id(tree: &Rc<RefCell<Tree>>, id: usize) -> Option<Rc<RefCell<Tree>>> {
-//     let mut queue: VecDeque<_> = VecDeque::new();
-//     queue.push_back(Rc::clone(tree));
-//     while let Some(tree) = queue.pop_front() {
-//         if tree.borrow().id() == id {
-//             return Some(tree);
-//         } else {
-//             tree.borrow().children().iter().for_each(|tree| {
-//                 queue.push_back(Rc::clone(tree))
-//             });
-//         }
-//     }
-//     None
-// }
-
-fn insert_this(tree: &mut Rc<RefCell<Tree>>, child: Rc<RefCell<Tree>>) {
-    tree.borrow_mut().children.push(child);
-}
-
-fn depth_calc(tree: &mut Rc<RefCell<Tree>>) {    
-    let mut depth_stack: Vec<(Rc<RefCell<Tree>>, usize)> = vec![(Rc::clone(&tree), 0)];
-    while let Some((tree, depth)) = depth_stack.pop() {
-        *tree.borrow_mut().depth.borrow_mut() = depth;
-        for c in &tree.borrow().children {
-            depth_stack.push((Rc::clone(c), depth + 1));
-        }
+    fn is_root(&self, pointer: usize) -> Option<bool> {
+        self.get_index(pointer).map(|node| node.parent.is_none())
     }
-}
-
-fn parent_calc(tree: &mut Rc<RefCell<Tree>>) {
-    let mut parent_stack: Vec<(Rc<RefCell<Tree>>, Weak<_>)> = vec![(Rc::clone(&tree), Weak::new())];
-    while let Some((tree, parent)) = parent_stack.pop() {
-        tree.borrow_mut().parent = parent;
-        for c in &tree.borrow().children {
-            parent_stack.push((Rc::clone(c), Rc::downgrade(&tree)));
-        }
+    fn is_leaf(&self, pointer: usize) -> Option<bool> {
+        self.get_index(pointer).map(|node| node.children.is_empty())
     }
-}
-
-fn normalize(tree: &mut Rc<RefCell<Tree>>) {
-    parent_calc(tree);
-    depth_calc(tree);
+    fn is_internal_node(&self, pointer: usize) -> Option<bool> {
+        self.is_leaf(pointer).map(|b| !b)
+    }
+    fn parent_of(&self, pointer: usize) -> Option<usize> {
+        self.get_index(pointer).and_then(|node| node.parent)
+    }
+    fn children_of(&self, pointer: usize) -> Option<&[usize]> {
+        self.get_index(pointer).map(|node| node.children.as_ref())
+    }
+    fn depth_of(&self, pointer: usize) -> Option<usize> {
+        self.get_index(pointer).map(|node| node.depth)
+    }
 }
 
 fn main() {
-    let children_ids = input_str(&input(std::io::stdin()));
-    let tree = from_child(children_ids).unwrap();
-    let max_id = max_id(&tree);
-    for id in 0..=max_id {
-        let tree = search_from_id(&tree, id).unwrap();
-        let parent = if let Some(parent) = tree.borrow().parent() {
-            parent.borrow().id().to_string()
-        } else {
-            "-1".to_owned()
-        };
-        let kind = if tree.borrow().is_root() {
-            "root"
-        } else if tree.borrow().is_internal_node() {
-            "internal node"
-        } else {
-            assert!(tree.borrow().is_leaf());
-            "leaf"
-        };
-        let depth = tree.borrow().depth();
-        let children = tree.borrow().children().iter().map(|child| child.borrow().id().to_string()).collect::<Vec<String>>().join(", ");
+    let tree = input();
+    let max_n = tree.nodes.len() - 1;
+    for i in 0..=max_n {
         println!(
             "node {}: parent = {}, depth = {}, {}, [{}]",
-            id, parent, depth, kind, children
-        );
+            i,
+            match tree.parent_of(i) {
+                Some(i) => i.to_string(),
+                None => "-1".to_string(),
+            },
+            tree.depth_of(i).unwrap(),
+            {
+                if tree.is_root(i).unwrap() {
+                    "root".to_string()
+                } else if tree.is_leaf(i).unwrap() {
+                    "leaf".to_string()
+                } else if tree.is_internal_node(i).unwrap() {
+                    "internal node".to_string()
+                } else {
+                    unreachable!()
+                }
+            },
+            tree.children_of(i).unwrap().iter().map(|cid| cid.to_string()).collect::<Vec<_>>().join(", "),
+        )
     }
 }
 
-fn input<T: std::io::Read>(mut input: T) -> String {
+fn input() -> Arena {
+    use std::io::Read;
     let mut string = String::new();
-    input.read_to_string(&mut string).unwrap();
-    string
-}
-
-fn input_str(str: &str) -> Vec<Vec<usize>> {
-    let mut lines = str.lines();
-    let n = lines.next().unwrap().trim().parse::<usize>().unwrap();
-    let mut v = vec![vec![]; n];
-    for line in lines {
-        let mut words = line.split_whitespace();
-        let id: usize = words.next().unwrap().parse::<usize>().unwrap();
-        let _k: usize = words.next().unwrap().parse::<usize>().unwrap();
-        let c: Vec<usize> = words.map(|word| word.parse::<usize>().unwrap()).collect();
-        v[id] = c;
-    }
-    v
+    std::io::stdin().read_to_string(&mut string).unwrap();
+    let mut lines = string.lines();
+    let n = lines.next().unwrap().parse::<usize>().unwrap();
+    let mut v: Vec<(usize, usize, Vec<usize>)> = lines.map(|str|{
+        let mut num_iter = 
+            str.split_whitespace().map(|str| str.parse::<usize>().unwrap());
+        (num_iter.next().unwrap(), num_iter.next().unwrap(), num_iter.collect())
+    }).collect();
+    v.sort_by(|node_info1, node_info2| node_info1.0.cmp(&node_info2.0));
+    let v = v.into_iter().map(|(_, _, v)| v).collect();
+    Arena::new(v).unwrap()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn input_str_test() {
-        let str: String = {
-            let mut str = String::new();
-            str.push_str("100000\n");
-            str.push_str(&format!("0 99999 {}\n", {
-                (1..100_000).map(|i| i.to_string()).collect::<Vec<_>>().join(" ")
-            }));
-            for i in 1..100_000 {
-                str.push_str(&format!("{} 0\n", i));
-            }
-            str
-        };
-        let children_ids = input_str(&str);
-        let tree = from_child(children_ids).unwrap();
-        let max_id = max_id(&tree);
-        for id in 0..=max_id {
-            let tree = search_from_id(&tree, id).unwrap();
-            let parent = if let Some(parent) = tree.borrow().parent() {
-                parent.borrow().id().to_string()
-            } else {
-                "-1".to_owned()
-            };
-            let kind = if tree.borrow().is_root() {
-                "root"
-            } else if tree.borrow().is_internal_node() {
-                "internal node"
-            } else {
-                assert!(tree.borrow().is_leaf());
-                "leaf"
-            };
-            let depth = tree.borrow().depth();
-            let children = tree.borrow().children().iter().map(|child| child.borrow().id().to_string()).collect::<Vec<String>>().join(", ");
-            eprintln!(
-                "node {}: parent = {}, depth = {}, {}, [{}]",
-                id, parent, depth, kind, children
-            );
-        }
+    fn test_arena() {
+        let ids = vec![
+        ];
+        let _ = Arena::new(ids).unwrap();
+
+        let ids = vec![
+            vec![],
+        ];
+        let _ = Arena::new(ids).unwrap();
+
+        let ids = vec![
+            vec![1],
+            vec![],
+        ];
+        let _ = Arena::new(ids).unwrap();
+
+        let ids = vec![
+            vec![1],
+            vec![2],
+            vec![3],
+            vec![4],
+            vec![],
+        ];
+        let _ = Arena::new(ids).unwrap();
+        let ids = vec![
+            vec![1,2,3],
+            vec![4],
+            vec![5],
+            vec![6],
+            vec![],
+            vec![],
+            vec![],
+        ];
+        let _ = Arena::new(ids).unwrap();
+
+        let ids = vec![
+            vec![],
+            vec![0],
+        ];
+        let _ = Arena::new(ids).unwrap();
+
     }
 }
