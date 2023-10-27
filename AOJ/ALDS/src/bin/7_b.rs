@@ -6,7 +6,6 @@ struct Node {
     right_id: Option<usize>,
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 enum Kind {
     Root,
