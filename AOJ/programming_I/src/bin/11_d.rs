@@ -2,44 +2,44 @@ use std::cmp::PartialEq;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum DiceLabel {
-    U, D, R, L, F, B,
+    U = 0,
+    D = 5,
+    F = 1,
+    B = 4,
+    R = 2,
+    L = 3,
 }
 
 // relation between labels
 impl DiceLabel {
     fn all() -> Vec<Self> {
         vec![
-            DiceLabel::U, DiceLabel::D, DiceLabel::R, DiceLabel::L, DiceLabel::F, DiceLabel::B,
+            DiceLabel::U,
+            DiceLabel::D,
+            DiceLabel::R,
+            DiceLabel::L,
+            DiceLabel::F,
+            DiceLabel::B,
         ]
     }
     fn rev(self) -> DiceLabel {
         match self {
             DiceLabel::U => Self::D,
             DiceLabel::D => Self::U,
-            DiceLabel::R => Self::L,
-            DiceLabel::L => Self::R,
             DiceLabel::F => Self::B,
             DiceLabel::B => Self::F,
+            DiceLabel::R => Self::L,
+            DiceLabel::L => Self::R,
         }
     }
     fn right_hand_around(self) -> Vec<DiceLabel> {
         match self {
             DiceLabel::U => vec![DiceLabel::F, DiceLabel::R, DiceLabel::B, DiceLabel::L],
             DiceLabel::D => vec![DiceLabel::F, DiceLabel::L, DiceLabel::B, DiceLabel::R],
-            DiceLabel::R => vec![DiceLabel::U, DiceLabel::F, DiceLabel::D, DiceLabel::B],
-            DiceLabel::L => vec![DiceLabel::U, DiceLabel::B, DiceLabel::D, DiceLabel::F],
             DiceLabel::F => vec![DiceLabel::U, DiceLabel::L, DiceLabel::D, DiceLabel::R],
             DiceLabel::B => vec![DiceLabel::U, DiceLabel::R, DiceLabel::D, DiceLabel::L],
-        }
-    }
-    fn into_usize(self) -> usize {
-        match self {
-            DiceLabel::U => 0,
-            DiceLabel::F => 1,
-            DiceLabel::R => 2,
-            DiceLabel::L => 3,
-            DiceLabel::B => 4,
-            DiceLabel::D => 5,
+            DiceLabel::R => vec![DiceLabel::U, DiceLabel::F, DiceLabel::D, DiceLabel::B],
+            DiceLabel::L => vec![DiceLabel::U, DiceLabel::B, DiceLabel::D, DiceLabel::F],
         }
     }
 }
@@ -67,17 +67,15 @@ impl Location {
         match side {
             DiceLabel::U => self.up,
             DiceLabel::D => self.up.rev(),
-            _ => {
-                let around_usual = DiceLabel::U.right_hand_around();
-                let around_self = self.up.right_hand_around();
-                around_self
-                    .into_iter()
-                    .cycle()
-                    .skip_while(|item| *item != self.south)
-                    .zip(around_usual)
-                    .find_map(|(item1, item2)| if item2 == side { Some(item1) } else { None })
-                    .unwrap()
-            }
+            _ => self
+                .up
+                .right_hand_around()
+                .into_iter()
+                .cycle()
+                .skip_while(|item| *item != self.south)
+                .zip(DiceLabel::U.right_hand_around())
+                .find_map(|(item1, item2)| if item2 == side { Some(item1) } else { None })
+                .unwrap(),
         }
     }
     fn right_hand_spin(self, side: DiceLabel) -> Self {
@@ -118,18 +116,18 @@ struct Dice {
 impl PartialEq for Dice {
     fn eq(&self, other: &Self) -> bool {
         DiceLabel::all()
-        .into_iter()
-        .flat_map(|roll1| {
-            roll1
-                .right_hand_around()
-                .into_iter()
-                .map(move |roll2| (roll1, roll2))
-        })
-        .any(|(up, front)| {
-            let putted_dice1 = PuttedDice::new(self.clone(), Location::new(up, front));
-            let putted_dice2 = PuttedDice::new(other.clone(), Location::default());
-            putted_dice1 == putted_dice2
-        })
+            .into_iter()
+            .flat_map(|roll1| {
+                roll1
+                    .right_hand_around()
+                    .into_iter()
+                    .map(move |roll2| (roll1, roll2))
+            })
+            .any(|(up, front)| {
+                let putted_dice1 = PuttedDice::new(self.clone(), Location::new(up, front));
+                let putted_dice2 = PuttedDice::new(other.clone(), Location::default());
+                putted_dice1 == putted_dice2
+            })
     }
 }
 
@@ -144,15 +142,15 @@ impl PuttedDice {
         Self { dice, loc }
     }
     fn get_by_label(&self, label: DiceLabel) -> u8 {
-        self.dice.vec[self.loc.get_lotated_label(label).into_usize()]
+        self.dice.vec[self.loc.get_lotated_label(label) as usize]
     }
 }
 
 impl PartialEq for PuttedDice {
     fn eq(&self, other: &Self) -> bool {
         DiceLabel::all()
-        .into_iter()
-        .all(|label| self.get_by_label(label) == other.get_by_label(label))
+            .into_iter()
+            .all(|label| self.get_by_label(label) == other.get_by_label(label))
     }
 }
 
