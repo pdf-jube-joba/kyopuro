@@ -1,8 +1,7 @@
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
-use rand::distributions::uniform::SampleBorrow;
-
+#[derive(Debug)]
 struct TreeNode {
     key: isize,
     parent: Option<Weak<RefCell<TreeNode>>>,
@@ -21,6 +20,7 @@ impl TreeNode {
     }
 }
 
+#[derive(Debug)]
 struct Tree {
     tree: Option<Rc<RefCell<TreeNode>>>,
 }
@@ -59,6 +59,10 @@ fn insert(tree: &mut Tree, mut z: TreeNode) {
             }
         }
     }
+}
+
+fn insert_key(tree: &mut Tree, key: isize) {
+    insert(tree, TreeNode::new(key));
 }
 
 fn find_rec(tree_node: &Rc<RefCell<TreeNode>>, key: isize) -> bool {
@@ -112,24 +116,122 @@ fn find_rec_tree(tree_node: &Rc<RefCell<TreeNode>>, key: isize) -> Option<Rc<Ref
     }
 }
 
-// fn delete_this_node(tree_node: &Rc<RefCell<TreeNode>>) {
-//     let (l, r) = (tree_node.borrow().left.is_some(), tree_node.borrow().right.is_some());
-//     if l && r {
-//         let y_key: isize = {
-//             let keys = inorder_vec_rec(tree_node);
-//             let z_index: usize = keys.iter().enumerate().find_map(
-//                 |(i, key)| if tree_node.borrow().key == *key { Some(i) } else { None }
-//             ).unwrap();
-//             keys[z_index + 1]
-//         };
-//         tree_node.borrow_mut().key = y_key;
-//         delete_this_node(&find_rec_tree(tree_node, y_key).unwrap())
-//     } else if l || r {
-//         let t = Weak::upgrade(&tree_node.borrow().parent);
-//     } else {
+enum DelRes {
+    WellDel,
+    NotFound,
+    DeleteThis(Option<Rc<RefCell<TreeNode>>>),
+}
+
+fn delete_rec(tree_node: &Rc<RefCell<TreeNode>>, key: isize) -> DelRes {
+    // eprintln!("del {:?} {}", tree_node, key);
+    let mut p: Option<Rc<RefCell<TreeNode>>> = None;
+    let mut c: Rc<RefCell<TreeNode>> = Rc::clone(tree_node);
+    loop {
+        let ord = {
+            let this_key = c.borrow().key;
+            key.cmp(&this_key)
+        };
+        match ord {
+            std::cmp::Ordering::Equal => {
+                break;
+            }
+            std::cmp::Ordering::Less => {
+                let left_node: Rc<_> = if let Some(left_node) = &c.borrow().left {
+                    Rc::clone(left_node)
+                } else {
+                    return DelRes::NotFound;
+                };
+                p = Some(Rc::clone(&c));
+                c = left_node;
+
+            }
+            std::cmp::Ordering::Greater => {
+                let right_node: Rc<_> = if let Some(right_node) = &c.borrow().right {
+                    Rc::clone(right_node)
+                } else {
+                    return DelRes::NotFound;
+                };
+                p = Some(Rc::clone(&c));
+                c = right_node;
+            }
+        }
+    }
+    if let Some(p) = p {
+        let ord = {
+            c.borrow().key.cmp(&p.borrow().key)
+        };
+        match (ord, c.borrow().left.as_ref(), c.borrow().right.as_ref()) {
+            (std::cmp::Ordering::Less, None, None) => {
+                p.borrow_mut().left = None;
+                return DelRes::WellDel;
+            }
+            (std::cmp::Ordering::Greater, None, None) => {
+                p.borrow_mut().right = None;
+                return DelRes::WellDel;
+            }
+            (std::cmp::Ordering::Less, Some(node), None) | (std::cmp::Ordering::Less, None, Some(node)) => {
+                p.borrow_mut().left = Some(Rc::clone(node));
+                return DelRes::WellDel;
+            }
+            (std::cmp::Ordering::Greater, Some(node), None) | (std::cmp::Ordering::Greater, None, Some(node)) => {
+                p.borrow_mut().right = Some(Rc::clone(node));
+                return DelRes::WellDel;
+            }
+            (std::cmp::Ordering::Less, Some(_), Some(_)) | (std::cmp::Ordering::Greater, Some(_), Some(_)) => {
+            }
+            (std::cmp::Ordering::Equal, _, _) => {
+                unreachable!()
+            }
+        }
+        let y_key: isize = {
+            let this_key = c.borrow().key;
+            let inorder_vec = inorder_vec_rec(&c);
+            let pos = inorder_vec.iter().position(|key| *key == this_key).unwrap();
+            inorder_vec[pos + 1]
+        };
+        delete_rec(&c, y_key);
+        c.borrow_mut().key = y_key;
+        DelRes::WellDel
+    } else {
+        // delete root case
+        match (c.borrow().left.as_ref(), c.borrow().right.as_ref()) {
+            (None, None) => {
+                return DelRes::DeleteThis(None);
+            }
+            (Some(node), None) | (None, Some(node)) => {
+                return DelRes::DeleteThis(Some(Rc::clone(node)));
+            }
+            (Some(_), Some(_)) => {}
+        }
+        let y_key: isize = {
+            let this_key = c.borrow().key;
+            let inorder_vec = inorder_vec_rec(&c);
+            let pos = inorder_vec.iter().position(|key| *key == this_key).unwrap();
+            inorder_vec[pos + 1]
+        };
+        delete_rec(&c, y_key);
+        c.borrow_mut().key = y_key;
+        DelRes::WellDel
         
-//     }
-// }
+    }
+}
+
+fn delete(tree: &mut Tree, key: isize) -> bool {
+    let tree_node = if let Some(tree_node) = &tree.tree {
+        tree_node
+    } else {
+        return false;
+    };
+    let res = delete_rec(tree_node, key);
+    match res {
+        DelRes::NotFound => false,
+        DelRes::WellDel => true,
+        DelRes::DeleteThis(node) => {
+            tree.tree = node;
+            true
+        }
+    }
+}
 
 fn preorder_vec(tree: &Tree) -> Vec<isize> {
     fn preorder_vec_rec(tree_node: &Rc<RefCell<TreeNode>>) -> Vec<isize> {
@@ -220,6 +322,9 @@ fn main() {
                     "no"
                 }
             }),
+            Order::Delete(key) => {
+                delete(&mut tree, key);
+            }
         }
     }
 }
@@ -227,6 +332,7 @@ fn main() {
 enum Order {
     Insert(isize),
     Find(isize),
+    Delete(isize),
     Print,
 }
 
@@ -245,6 +351,8 @@ fn input() -> Vec<Order> {
                 Order::Insert((&buf[6..]).trim().parse::<isize>().unwrap())
             } else if &buf[0..4] == "find" {
                 Order::Find((&buf[5..]).trim().parse::<isize>().unwrap())
+            } else if &buf[0..6] == "delete" {
+                Order::Delete((&buf[6..]).trim().parse::<isize>().unwrap())
             } else {
                 debug_assert!(buf == "print\n");
                 Order::Print
@@ -277,5 +385,71 @@ mod tests {
         assert_eq!(preorder_vec(&tree), vec![0, 1, 2]);
         assert_eq!(inorder_vec(&tree), vec![0, 1, 2]);
         assert_eq!(postorder_vec(&tree), vec![2, 1, 0]);
+    }
+    #[test]
+    fn delete_test() {
+        let mut tree = Tree { tree: None };
+        assert!(!delete(&mut tree, 0));
+
+        // delete tree with only root
+        insert_key(&mut tree, 0);
+        assert!(delete(&mut tree, 0));
+        assert_eq!(preorder_vec(&tree), vec![]);
+
+        // delete tree of 0_(_, 1)
+        insert_key(&mut tree, 0);
+        insert_key(&mut tree, 1);
+        assert!(delete(&mut tree, 1));
+        assert_eq!(preorder_vec(&tree), vec![0]);
+
+        insert_key(&mut tree, 1);
+        assert!(delete(&mut tree, 0));
+        assert_eq!(preorder_vec(&tree), vec![1]);
+
+        // delete tree of 1_(0, 2)             
+        insert_key(&mut tree, 0);
+        insert_key(&mut tree, 2);
+        assert_eq!(inorder_vec(&tree), vec![0,1,2]);
+        
+        delete(&mut tree, 0);
+        assert_eq!(inorder_vec(&tree), vec![1,2]);
+        insert_key(&mut tree, 0);
+        
+        delete(&mut tree, 2);
+        assert_eq!(inorder_vec(&tree), vec![0,1]);
+        insert_key(&mut tree, 2);
+
+        delete(&mut tree, 1);
+
+        // delete tree of 0_(-2_(-3, -1) , 2_(1, 3))
+        let mut tree = Tree { tree: None };
+        insert_key(&mut tree, 0);
+        insert_key(&mut tree, 2);
+        insert_key(&mut tree, 1);
+        insert_key(&mut tree, 3);
+        insert_key(&mut tree, -2);
+        insert_key(&mut tree, -1);
+        insert_key(&mut tree, -3);
+        assert_eq!(inorder_vec(&tree), vec![-3,-2,-1,0,1,2,3]);
+
+        delete(&mut tree, -3);
+        delete(&mut tree, -1);
+        insert_key(&mut tree, -1);
+        insert_key(&mut tree, -3);
+
+        delete(&mut tree, -2);
+        insert_key(&mut tree, -2);
+
+        delete(&mut tree, 0);
+        insert_key(&mut tree, 0);
+
+        insert_key(&mut tree, -4);
+        delete(&mut tree, -3);
+
+        insert_key(&mut tree, 4);
+        delete(&mut tree, 3);
+
+        assert_eq!(inorder_vec(&tree), vec![-4,-2,-1,0,1,2,4]);
+
     }
 }
