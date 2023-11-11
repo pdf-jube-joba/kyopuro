@@ -124,10 +124,59 @@ fn construct_optimal_tree(key_prob: &[f64], dummy_prob: &[f64]) -> BinTreeNode {
     dp[0][key_len].clone()
 }
 
+fn compute_opt_expect_val(key_prob: &[f64], dummy_prob: &[f64]) -> f64 {
+    let n = key_prob.len();
+    // sum_of_val[i][j] = sum of key_prob[i..i+j] and dummy_prob[i..=i+j]
+    // 0 <= i <= n and 0 <= j <= n-i
+    let sum_of_val: Vec<Vec<f64>> = {
+        (0..=n).map(|i|{
+            (0..=n-i).map(|j|{
+                key_prob[i..i+j].iter().sum::<f64>() + dummy_prob[i..=i+j].iter().sum::<f64>()
+            }).collect()
+        }).collect()
+    };
+
+    // dp[i][j] = expect cost of opt_tree of (key_prob[i..i+j], dummy_prob[i..=i+j])
+    // 0 <= i < key_len, 0 <= j <= key_len - i
+    let mut dp: Vec<Vec<f64>> = vec![Vec::with_capacity(n+1); n + 1];
+
+    // j = 0 case
+    // dp[i][0] = one dummy_key so expect cost of opt tree is equal to dummy_prob[i]
+    for i in 0..=n {
+        dp[i].push(dummy_prob[i]);
+    }
+
+    // other j case (recursion)
+    // dp[i][j] = opt cost of (kp[i..i+j], dp[i..=i+j])
+    for j in 1..=n {
+        for i in 0..=n - j {
+            let opt_cost = (0..j)
+                .map(|k| {
+                    let key_prob = key_prob[i+k];
+                    let left_cost = dp[i][k] + sum_of_val[i][k];
+                    let right_cost = dp[i + k + 1][j - (k + 1)] + sum_of_val[i+k+1][j-(k+1)];
+                    key_prob + left_cost + right_cost
+                })
+                .min_by(|cost1, cost2| {
+                    debug_assert!(!cost1.is_nan(), !cost2.is_nan());
+                    if cost1 < cost2 {
+                        std::cmp::Ordering::Less
+                    } else {
+                        std::cmp::Ordering::Greater
+                    }
+                })
+                .unwrap();
+            dp[i].push(opt_cost);
+        }
+    }
+
+    dp[0][n]
+
+}
+
 fn main() {
     let (key_prob, dummy_prob) = input();
-    let opt_tree = construct_optimal_tree(&key_prob, &dummy_prob);
-    let exp_cost = compute_expected_cost_node(&opt_tree, 0);
+    let exp_cost = compute_opt_expect_val(&key_prob, &dummy_prob);
     println!("{}", exp_cost);
 }
 
@@ -249,5 +298,21 @@ mod test {
             opt_tree == case1_tree((k[0], k[1]), (d[0], d[1], d[2])) ||
             opt_tree == case2_tree((k[0], k[1]), (d[0], d[1], d[2])) 
         );
+    }
+    #[test]
+    fn cost_test() {
+        fn test(k: &[f64], d: &[f64]) {
+            let opt_tree = construct_optimal_tree(k, d);
+            let opt_tree_cost = compute_expected_cost_node(&opt_tree, 0);
+            let comp_cost = compute_opt_expect_val(k, d);
+            assert!(
+                (opt_tree_cost - comp_cost).abs() < 0.01
+            )
+        }
+        test(&vec![], &vec![1_f64]);
+        test(&vec![0.5_f64], &vec![0.25_f64, 0.25_f64]);
+        let k = vec![0.2_f64, 0.1_f64];
+        let d = vec![0.1_f64, 0.5_f64, 0.1_f64];
+        test(&k, &d);
     }
 }
