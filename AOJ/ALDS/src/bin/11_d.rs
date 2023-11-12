@@ -82,6 +82,7 @@ fn input() -> (usize, Vec<(usize, usize)>, Vec<(usize, usize)>) {
     };
     let q = {
         buf.clear();
+        stdin.read_line(&mut buf).unwrap();
         buf.trim().parse::<usize>().unwrap()
     };
     let ques = (0..q)
@@ -148,6 +149,7 @@ mod tests {
 
         uni.union(0, 2);
         uni.union(3, 4);
+
         let set1 = vec![0,1,2];
         let set2 = vec![3,4];
         test_one_set(&uni, &set1);
@@ -161,8 +163,24 @@ mod tests {
         test_diff_set(&uni, &set1, &set2);
 
         uni.union(2, 4);
-        test_one_set(&uni, &vec![0,1,2,3,4]);
+        test_one_set(&uni, &[0,1,2,3,4]);
         uni.flat();
-        test_one_set(&uni, &vec![0,1,2,3,4]);
+        test_one_set(&uni, &[0,1,2,3,4]);
+    }
+    #[test]
+    fn tle_test() {
+        let n = 100_000;
+        let m = 100_000;
+        let rel = (0..m).map(|i| (i, (i+1) % m)).collect::<Vec<_>>();
+        let mut uni = UnionTree::new(n);
+        for (i,j) in rel {
+            uni.union(i,j);
+        }
+        uni.flat();
+
+        let ques = (0..10_000).map(|i| (i, (i + 100) % m)).collect::<Vec<_>>();
+        for (x,y) in ques {
+            uni.is_eq(x,y);
+        }
     }
 }
