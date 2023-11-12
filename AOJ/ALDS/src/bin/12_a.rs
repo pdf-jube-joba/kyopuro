@@ -67,6 +67,7 @@ fn cost(graph: Vec<Vec<Option<usize>>>) -> usize {
 fn main() {
     let graph = input();
     let cost = cost(graph);
+    println!("{}", cost);
 }
 
 fn input() -> Vec<Vec<Option<usize>>> {

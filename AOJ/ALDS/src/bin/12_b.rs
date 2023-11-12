@@ -17,10 +17,7 @@ fn dijkstra(graph: Vec<Vec<(usize, usize)>>) -> Vec<usize> {
     v[0] = Some(0);
     let mut nexts: Vec<(usize, usize)> = vec![];
 
-    // push edge from vertex 0 
-    for (ind, cost) in &graph[0] {
-        nexts.push((*ind, *cost));
-    }
+    nexts.extend(&graph[0]);
 
     nexts.sort_by(|(_, cost1), (_, cost2)| cost2.cmp(&cost1));
     
@@ -41,6 +38,9 @@ fn dijkstra(graph: Vec<Vec<(usize, usize)>>) -> Vec<usize> {
 fn main() {
     let list = input();
     let costs = dijkstra(list);
+    for i in 0..costs.len() {
+        println!("{} {}", i, costs[i]);
+    }
 }
 
 fn input() -> Vec<Vec<(usize, usize)>> {
@@ -52,10 +52,11 @@ fn input() -> Vec<Vec<(usize, usize)>> {
     };
     let mut v = (0..n).map(|_|{
         buf.clear();
+        stdin.read_line(&mut buf).unwrap();
         let v = buf.split_whitespace().map(|str| str.parse::<usize>().unwrap()).collect::<Vec<_>>();
         let ind = v[0];
         let deg = v[1];
-        (ind, (0..deg).map(|i| (v[2*i], v[2*i+1])).collect())
+        (ind, (0..deg).map(|i| (v[2*i + 2], v[2*i + 3])).collect())
     }).collect::<Vec<(usize, Vec<(usize, usize)>)>>();
     v.sort_by(|(i1, _), (i2, _)| i1.cmp(&i2));
     v.into_iter().map(|(_, v)| v).collect()
