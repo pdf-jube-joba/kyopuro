@@ -1,16 +1,20 @@
+#![allow(unused)]
 fn main() {
-}
-
-fn t(a: &mut[usize], b: &mut[usize]) {
-
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test() {
-        let mut a = vec![1,2,3];
-        // t(&mut a[0..1], &mut a[1..2])
+#[inline]
+fn fibonacci(n: u64) -> u64 {
+    match n {
+        0 => 1,
+        1 => 1,
+        n => fibonacci(n-1) + fibonacci(n-2),
     }
+}
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use mycrate::fibonacci;
+
+pub fn criterion_benchmark(c: &mut Criterion) {
+    c.bench_function("fib 20", |b| b.iter(|| fibonacci(black_box(20))));
+}
+
+criterion_group!(benches, criterion_benchmark);
+criterion_main!(benches);
 }
