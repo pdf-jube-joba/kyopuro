@@ -1,5 +1,5 @@
-const LEN: usize = 3;
-const LEN2: usize = 9; //LEN.pow(2);
+const LEN: usize = 4;
+const LEN2: usize = 16; //LEN.pow(2);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Move {
@@ -16,9 +16,10 @@ struct Puzzle {
 
 const SOLVED_PUZZLE: Puzzle = Puzzle {
     puzzle: [
-         1, 2, 3,
-         4, 5, 6,
-         7, 8, 0,
+         1, 2, 3, 4,
+         5, 6, 7, 8,
+         9,10,11,12,
+        13,14,15, 0,
     ],
 };
 
@@ -146,11 +147,12 @@ mod tests {
     #[test]
     fn min_test() {
         let puzzle = vec![
-             1, 2, 3,
-             4, 5, 6,
-             7, 8, 0,
+             1, 2, 3, 4,
+             6, 7, 8, 0,
+             5,10,11,12,
+             9,13,14,15,
             ];
         let min = puzzle_solve_min(Puzzle::from_vec(&puzzle));
-        assert_eq!(min, 0);
+        assert_eq!(min, 8);
     }
 }
