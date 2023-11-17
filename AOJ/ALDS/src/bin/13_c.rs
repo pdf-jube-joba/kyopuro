@@ -9,18 +9,15 @@ enum Move {
     L,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+const MOVES: [Move; 4] = [Move::U, Move::R, Move::D, Move::L];
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Puzzle {
     puzzle: [u8; LEN2],
 }
 
 const SOLVED_PUZZLE: Puzzle = Puzzle {
-    puzzle: [
-         1, 2, 3, 4,
-         5, 6, 7, 8,
-         9,10,11,12,
-        13,14,15, 0,
-    ],
+    puzzle: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0],
 };
 
 impl Puzzle {
@@ -53,6 +50,17 @@ impl Puzzle {
         }
         true
     }
+    fn dist(&self, other: &Self) -> usize {
+        (0..LEN2)
+            .map(|i| {
+                if self.puzzle[i] == other.puzzle[i] {
+                    0
+                } else {
+                    1
+                }
+            })
+            .sum()
+    }
 }
 
 fn is_solved(puzzle: &Puzzle) -> bool {
@@ -70,52 +78,115 @@ fn next_moves(puzzle: &Puzzle) -> Vec<Puzzle> {
     next_puzzles
 }
 
-fn puzzle_solve_min(puzzle: Puzzle) -> usize {
-    use std::collections::BTreeSet;
-    let moves = [Move::U, Move::R, Move::D, Move::L];
+// we want priorityqueue
+// std::collections::BinaryHeap needs T: Ord so we can't use it
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PriorityQueue<T, F: Fn(&T) -> usize> {
+    vec: Vec<T>,
+    func: F,
+}
 
-    let mut s_pre: BTreeSet<Puzzle> = BTreeSet::new();
-    let mut s_now: BTreeSet<Puzzle> = BTreeSet::new();
-    s_now.insert(puzzle);
-    let mut s_nex: BTreeSet<Puzzle> = BTreeSet::new();
-
-    let mut depth = 0;
-
-    loop {
-        for now_puzzle in s_now.iter() {
-            if is_solved(&now_puzzle) {
-                return depth;
-            }
-            for m in &moves {
-                let mut next_puzzle = now_puzzle.clone();
-                if next_puzzle.move_0(*m) && !s_pre.contains(&next_puzzle) {
-                    s_nex.insert(next_puzzle);
-                }
-            };
-        }
-        depth += 1;
-        s_pre = s_now;
-        s_now = s_nex;
-        s_nex = BTreeSet::new();
+fn parent(i: usize) -> Option<usize> {
+    if i > 0 {
+        Some((i - 1) / 2)
+    } else {
+        None
     }
 }
 
-// fn puzzle_solve_min(puzzle: Puzzle) -> usize {
-//     use std::collections::VecDeque;
-//     let mut queue = VecDeque::new();
+fn right(i: usize) -> usize {
+    2 * i + 1
+}
 
-//     queue.push_back((puzzle, 0));
+fn left(i: usize) -> usize {
+    2 * i + 2
+}
 
-//     while let Some((puzzle, moves)) = queue.pop_front() {
-//         if is_solved(&puzzle) {
-//             return moves;
-//         }
-//         for next_move in next_moves(&puzzle) {
-//             queue.push_back((next_move, moves + 1));
-//         }
-//     }
-//     unreachable!()
-// }
+impl<T, F: Fn(&T) -> usize> PriorityQueue<T, F> {
+    fn new(f: F) -> Self {
+        Self {
+            vec: vec![],
+            func: f,
+        }
+    }
+    fn get(&self, index: usize) -> Option<&T> {
+        self.vec.get(index)
+    }
+    fn push(&mut self, value: T) {
+        self.vec.push(value);
+
+        let mut i = self.vec.len() - 1;
+
+        while let Some(p) = parent(i) {
+            if (self.func)(&self.vec[i]) > (self.func)(&self.vec[p]) {
+                return;
+            }
+            self.vec.swap(i, p);
+            i = p;
+        }
+    }
+    fn pop(&mut self) -> Option<T> {
+        let n = self.vec.len();
+        if n == 0 || n == 1 {
+            self.vec.pop()
+        } else {
+            self.vec.swap(0, n - 1);
+            let value = self.vec.pop();
+            self.min_heapify(0);
+            value
+        }
+    }
+    fn min_heapify(&mut self, i: usize) {
+        let l = left(i);
+        let r = right(i);
+
+        let prio_i: Option<(usize, usize)> = self.get(i).map(|val| ((self.func)(val), i));
+        let prio_l: Option<(usize, usize)> = self.get(l).map(|val| ((self.func)(val), l));
+        let prio_r: Option<(usize, usize)> = self.get(r).map(|val| ((self.func)(val), r));
+
+        let m: usize = {
+            vec![prio_i, prio_l, prio_r]
+                .into_iter()
+                .filter_map(|v| v)
+                .min_by_key(|v| v.0)
+                .unwrap()
+                .1
+        };
+
+        if m != i {
+            self.vec.swap(i, m);
+            self.min_heapify(m);
+        }
+    }
+}
+
+fn key_compute(&(ref puzzle, depth): &(Puzzle, usize)) -> usize {
+    puzzle.dist(&SOLVED_PUZZLE)
+}
+
+fn puzzle_solve_min(puzzle: Puzzle) -> usize {
+    use std::collections::{BinaryHeap, HashSet};
+
+    let mut is_visited: HashSet<Puzzle> = HashSet::new();
+
+    // puzzle depth
+    let mut queue: PriorityQueue<(Puzzle, usize), _> = PriorityQueue::new(key_compute);
+    queue.push((puzzle, 0));
+
+    while let Some((puzzle, depth)) = queue.pop() {
+        if is_solved(&puzzle) {
+            return depth;
+        }
+        is_visited.insert(puzzle.clone());
+        for m in &MOVES {
+            let mut next_puzzle = puzzle.clone();
+            if next_puzzle.move_0(*m) && !is_visited.contains(&next_puzzle) {
+                queue.push((next_puzzle, depth + 1));
+            }
+        }
+    }
+    unreachable!()
+}
 
 fn main() {
     let puzzle = input();
@@ -143,15 +214,36 @@ fn input() -> Puzzle {
 
 #[cfg(test)]
 mod tests {
+    fn min_test_usize(val: &(usize, usize)) -> usize {
+        val.0
+    }
+    #[test]
+    fn minheap_test() {
+        let mut heap = PriorityQueue::new(min_test_usize);
+        heap.push((0, 0));
+        assert_eq!(heap.pop(), Some((0, 0)));
+        assert_eq!(heap.pop(), None);
+
+        heap.push((1, 0));
+        assert_eq!(heap.pop(), Some((1, 0)));
+        assert_eq!(heap.pop(), None);
+
+        heap.push((0, 0));
+        heap.push((1, 0));
+        assert_eq!(heap.pop(), Some((0, 0)));
+        assert_eq!(heap.pop(), Some((1, 0)));
+        assert_eq!(heap.pop(), None);
+
+        heap.push((1, 0));
+        heap.push((0, 0));
+        assert_eq!(heap.pop(), Some((0, 0)));
+        assert_eq!(heap.pop(), Some((1, 0)));
+        assert_eq!(heap.pop(), None);
+    }
     use super::*;
     #[test]
     fn min_test() {
-        let puzzle = vec![
-             1, 2, 3, 4,
-             6, 7, 8, 0,
-             5,10,11,12,
-             9,13,14,15,
-            ];
+        let puzzle = vec![1, 2, 3, 4, 6, 7, 8, 0, 5, 10, 11, 12, 9, 13, 14, 15];
         let min = puzzle_solve_min(Puzzle::from_vec(&puzzle));
         assert_eq!(min, 8);
     }
