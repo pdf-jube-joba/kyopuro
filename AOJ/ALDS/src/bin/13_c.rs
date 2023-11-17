@@ -9,40 +9,68 @@ enum Move {
     L,
 }
 
+impl Move {
+    fn neg(self) -> Self {
+        match self {
+            Move::U => Move::D,
+            Move::R => Move::L,
+            Move::D => Move::U,
+            Move::L => Move::R,
+        }
+    }
+}
+
 const MOVES: [Move; 4] = [Move::U, Move::R, Move::D, Move::L];
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Puzzle {
-    puzzle: [u8; LEN2],
+    puzzle: [[u8; LEN]; LEN],
+    // pos0: (usize, usize),
 }
 
 const SOLVED_PUZZLE: Puzzle = Puzzle {
-    puzzle: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0],
+    puzzle: [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 0]],
 };
 
 impl Puzzle {
     fn from_vec(slice: &[u8]) -> Self {
-        debug_assert!(slice.len() == LEN2);
-        let mut puzzle = Self { puzzle: [0; LEN2] };
-        for i in 0..LEN2 {
-            puzzle.puzzle[i] = slice[i];
+        debug_assert!(slice.len() == LEN.pow(2));
+        let mut puzzle = Self {
+            puzzle: [[0; LEN]; LEN],
+        };
+        for i in 0..LEN {
+            for j in 0..LEN {
+                puzzle.puzzle[i][j] = slice[i * LEN + j];
+            }
         }
         puzzle
     }
     fn move_0(&mut self, m: Move) -> bool {
-        let pos_0 = (0..LEN2).position(|i| self.puzzle[i] == 0).unwrap();
+        let (pos0_x, pos0_y) = {
+            (0..LEN)
+                .find_map(|i| {
+                    (0..LEN)
+                        .position(|j| self.puzzle[i][j] == 0)
+                        .map(|j| (i, j))
+                })
+                .unwrap()
+        };
         match m {
-            Move::U if LEN <= pos_0 => {
-                self.puzzle.swap(pos_0, pos_0 - LEN);
+            Move::U if 0 < pos0_x => {
+                self.puzzle[pos0_x][pos0_y] = self.puzzle[pos0_x - 1][pos0_y];
+                self.puzzle[pos0_x - 1][pos0_y] = 0;
             }
-            Move::R if pos_0 % LEN != LEN - 1 => {
-                self.puzzle.swap(pos_0, pos_0 + 1);
+            Move::R if pos0_y < LEN - 1 => {
+                self.puzzle[pos0_x][pos0_y] = self.puzzle[pos0_x][pos0_y + 1];
+                self.puzzle[pos0_x][pos0_y + 1] = 0;
             }
-            Move::D if pos_0 < LEN2 - LEN => {
-                self.puzzle.swap(pos_0, pos_0 + LEN);
+            Move::D if pos0_x < LEN - 1 => {
+                self.puzzle[pos0_x][pos0_y] = self.puzzle[pos0_x + 1][pos0_y];
+                self.puzzle[pos0_x + 1][pos0_y] = 0;
             }
-            Move::L if pos_0 % LEN != 0 => {
-                self.puzzle.swap(pos_0, pos_0 - 1);
+            Move::L if 0 < pos0_y => {
+                self.puzzle[pos0_x][pos0_y] = self.puzzle[pos0_x][pos0_y - 1];
+                self.puzzle[pos0_x][pos0_y - 1] = 0;
             }
             _ => {
                 return false;
@@ -51,15 +79,19 @@ impl Puzzle {
         true
     }
     fn dist(&self, other: &Self) -> usize {
-        (0..LEN2)
-            .map(|i| {
-                if self.puzzle[i] == other.puzzle[i] {
-                    0
-                } else {
-                    1
+        let mut sum = 0;
+        for i in 0..LEN {
+            for j in 0..LEN {
+                if self.puzzle[i][j] != 0 {
+                    sum += if self.puzzle[i][j] == other.puzzle[i][j] {
+                        0
+                    } else {
+                        1
+                    };
                 }
-            })
-            .sum()
+            }
+        }
+        sum
     }
 }
 
@@ -78,124 +110,48 @@ fn next_moves(puzzle: &Puzzle) -> Vec<Puzzle> {
     next_puzzles
 }
 
-// we want priorityqueue
-// std::collections::BinaryHeap needs T: Ord so we can't use it
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct PriorityQueue<T, F: Fn(&T) -> usize> {
-    vec: Vec<T>,
-    func: F,
-}
-
-fn parent(i: usize) -> Option<usize> {
-    if i > 0 {
-        Some((i - 1) / 2)
-    } else {
-        None
+// if dfs returns false then puzzle is change nothing
+fn dfs(puzzle: &mut Puzzle, pred_move: Option<Move>, depth: usize, limit: usize) -> bool {
+    let minimal_dist = puzzle.dist(&SOLVED_PUZZLE);
+    if minimal_dist + depth > limit {
+        return false;
     }
-}
-
-fn right(i: usize) -> usize {
-    2 * i + 1
-}
-
-fn left(i: usize) -> usize {
-    2 * i + 2
-}
-
-impl<T, F: Fn(&T) -> usize> PriorityQueue<T, F> {
-    fn new(f: F) -> Self {
-        Self {
-            vec: vec![],
-            func: f,
+    if minimal_dist == 0 {
+        // <=> puzzle == SOLVED_PUZZLE
+        return true;
+    }
+    for &m in &MOVES {
+        if Some(m.neg()) == pred_move {
+            continue;
         }
-    }
-    fn get(&self, index: usize) -> Option<&T> {
-        self.vec.get(index)
-    }
-    fn push(&mut self, value: T) {
-        self.vec.push(value);
-
-        let mut i = self.vec.len() - 1;
-
-        while let Some(p) = parent(i) {
-            if (self.func)(&self.vec[i]) > (self.func)(&self.vec[p]) {
-                return;
+        if puzzle.move_0(m) {
+            if dfs(puzzle, Some(m), depth + 1, limit) {
+                return true;
             }
-            self.vec.swap(i, p);
-            i = p;
+            puzzle.move_0(m.neg());
         }
     }
-    fn pop(&mut self) -> Option<T> {
-        let n = self.vec.len();
-        if n == 0 || n == 1 {
-            self.vec.pop()
-        } else {
-            self.vec.swap(0, n - 1);
-            let value = self.vec.pop();
-            self.min_heapify(0);
-            value
-        }
-    }
-    fn min_heapify(&mut self, i: usize) {
-        let l = left(i);
-        let r = right(i);
-
-        let prio_i: Option<(usize, usize)> = self.get(i).map(|val| ((self.func)(val), i));
-        let prio_l: Option<(usize, usize)> = self.get(l).map(|val| ((self.func)(val), l));
-        let prio_r: Option<(usize, usize)> = self.get(r).map(|val| ((self.func)(val), r));
-
-        let m: usize = {
-            vec![prio_i, prio_l, prio_r]
-                .into_iter()
-                .filter_map(|v| v)
-                .min_by_key(|v| v.0)
-                .unwrap()
-                .1
-        };
-
-        if m != i {
-            self.vec.swap(i, m);
-            self.min_heapify(m);
-        }
-    }
+    false
 }
 
-fn key_compute(&(ref puzzle, depth): &(Puzzle, usize)) -> usize {
-    puzzle.dist(&SOLVED_PUZZLE)
-}
-
-fn puzzle_solve_min(puzzle: Puzzle) -> usize {
-    use std::collections::{BinaryHeap, HashSet};
-
-    let mut is_visited: HashSet<Puzzle> = HashSet::new();
-
-    // puzzle depth
-    let mut queue: PriorityQueue<(Puzzle, usize), _> = PriorityQueue::new(key_compute);
-    queue.push((puzzle, 0));
-
-    while let Some((puzzle, depth)) = queue.pop() {
-        if is_solved(&puzzle) {
-            return depth;
-        }
-        is_visited.insert(puzzle.clone());
-        for m in &MOVES {
-            let mut next_puzzle = puzzle.clone();
-            if next_puzzle.move_0(*m) && !is_visited.contains(&next_puzzle) {
-                queue.push((next_puzzle, depth + 1));
-            }
+fn puzzle_solve_dfs_with_limit(mut puzzle: Puzzle) -> usize {
+    // 45 comes from constraint
+    for i in puzzle.dist(&SOLVED_PUZZLE)..=45 {
+        if dfs(&mut puzzle, None, 0, i) {
+            return i;
         }
     }
     unreachable!()
 }
 
 fn main() {
-    let puzzle = input();
-    let moves = puzzle_solve_min(puzzle);
+    let mut puzzle = input();
+    let moves = puzzle_solve_dfs_with_limit(puzzle);
     println!("{}", moves);
 }
 
 fn input() -> Puzzle {
-    let mut v = Vec::with_capacity(LEN2);
+    let mut v = Vec::with_capacity(LEN.pow(2));
 
     let mut buf = String::new();
     let stdin = std::io::stdin();
@@ -214,37 +170,46 @@ fn input() -> Puzzle {
 
 #[cfg(test)]
 mod tests {
-    fn min_test_usize(val: &(usize, usize)) -> usize {
-        val.0
+    use super::*;
+    #[test]
+    fn move_test() {
+        let puzzle = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0];
+        let mut puzzle = Puzzle::from_vec(&puzzle);
+        assert!(!puzzle.move_0(Move::R));
+        assert!(!puzzle.move_0(Move::D));
+        for m in vec![Move::L, Move::U, Move::R, Move::D] {
+            assert!(puzzle.move_0(m));
+        }
+        let expect = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 13, 14, 11, 0];
+        let expect = Puzzle::from_vec(&expect);
+        assert_eq!(puzzle, expect);
     }
     #[test]
-    fn minheap_test() {
-        let mut heap = PriorityQueue::new(min_test_usize);
-        heap.push((0, 0));
-        assert_eq!(heap.pop(), Some((0, 0)));
-        assert_eq!(heap.pop(), None);
+    fn min_dist_test() {
+        let puzzle1 = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]);
+        let puzzle2 = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]);
+        assert_eq!(puzzle1.dist(&puzzle2), 0);
 
-        heap.push((1, 0));
-        assert_eq!(heap.pop(), Some((1, 0)));
-        assert_eq!(heap.pop(), None);
+        let puzzle1 = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]);
+        let puzzle2 = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
+        assert_eq!(puzzle1.dist(&puzzle2), 1);
 
-        heap.push((0, 0));
-        heap.push((1, 0));
-        assert_eq!(heap.pop(), Some((0, 0)));
-        assert_eq!(heap.pop(), Some((1, 0)));
-        assert_eq!(heap.pop(), None);
-
-        heap.push((1, 0));
-        heap.push((0, 0));
-        assert_eq!(heap.pop(), Some((0, 0)));
-        assert_eq!(heap.pop(), Some((1, 0)));
-        assert_eq!(heap.pop(), None);
+        let puzzle1 = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]);
+        let puzzle2 = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 0, 14, 15]);
+        assert_eq!(puzzle1.dist(&puzzle2), 2);
     }
-    use super::*;
     #[test]
     fn min_test() {
         let puzzle = vec![1, 2, 3, 4, 6, 7, 8, 0, 5, 10, 11, 12, 9, 13, 14, 15];
-        let min = puzzle_solve_min(Puzzle::from_vec(&puzzle));
+        let mut puzzle = Puzzle::from_vec(&puzzle);
+        let min = puzzle_solve_dfs_with_limit(puzzle);
         assert_eq!(min, 8);
+    }
+    #[test]
+    fn tle_test() {
+        // let puzzle = vec![14, 7, 6, 4, 2, 3, 1, 11, 5, 9, 12, 15, 13, 0, 10, 8];
+        // let mut puzzle = Puzzle::from_vec(&puzzle);
+        // let min = puzzle_solve_dfs_with_limit(puzzle);
+        // assert_eq!(min, 40)
     }
 }
