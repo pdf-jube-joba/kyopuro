@@ -25,12 +25,7 @@ const MOVES: [Move; 4] = [Move::U, Move::R, Move::D, Move::L];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Puzzle {
     puzzle: [[u8; LEN]; LEN],
-    // pos0: (usize, usize),
 }
-
-const SOLVED_PUZZLE: Puzzle = Puzzle {
-    puzzle: [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 0]],
-};
 
 impl Puzzle {
     fn from_vec(slice: &[u8]) -> Self {
@@ -78,41 +73,30 @@ impl Puzzle {
         }
         true
     }
-    fn dist(&self, other: &Self) -> usize {
+    fn manhattan_dist_from_solved(&self) -> usize {
         let mut sum = 0;
-        for i in 0..LEN {
-            for j in 0..LEN {
-                if self.puzzle[i][j] != 0 {
-                    sum += if self.puzzle[i][j] == other.puzzle[i][j] {
-                        0
-                    } else {
-                        1
-                    };
-                }
+        for i in 0..LEN2 {
+            let mut v = self.puzzle[i / LEN][i % LEN] as usize;
+            if v != 0 {
+                v -= 1;
+                sum += abs(v / LEN, i / LEN) + abs(v % LEN, i % LEN);
             }
         }
         sum
     }
 }
 
-fn is_solved(puzzle: &Puzzle) -> bool {
-    *puzzle == SOLVED_PUZZLE
-}
-
-fn next_moves(puzzle: &Puzzle) -> Vec<Puzzle> {
-    let mut next_puzzles = Vec::with_capacity(4);
-    for m in vec![Move::U, Move::R, Move::D, Move::L] {
-        let mut next_puzzle = puzzle.clone();
-        if next_puzzle.move_0(m) {
-            next_puzzles.push(next_puzzle);
-        }
+fn abs(u1: usize, u2: usize) -> usize {
+    if u1 < u2 {
+        u2 - u1
+    } else {
+        u1 - u2
     }
-    next_puzzles
 }
 
 // if dfs returns false then puzzle is change nothing
 fn dfs(puzzle: &mut Puzzle, pred_move: Option<Move>, depth: usize, limit: usize) -> bool {
-    let minimal_dist = puzzle.dist(&SOLVED_PUZZLE);
+    let minimal_dist = puzzle.manhattan_dist_from_solved();
     if minimal_dist + depth > limit {
         return false;
     }
@@ -136,7 +120,7 @@ fn dfs(puzzle: &mut Puzzle, pred_move: Option<Move>, depth: usize, limit: usize)
 
 fn puzzle_solve_dfs_with_limit(mut puzzle: Puzzle) -> usize {
     // 45 comes from constraint
-    for i in puzzle.dist(&SOLVED_PUZZLE)..=45 {
+    for i in 0..=45 {
         if dfs(&mut puzzle, None, 0, i) {
             return i;
         }
@@ -145,7 +129,7 @@ fn puzzle_solve_dfs_with_limit(mut puzzle: Puzzle) -> usize {
 }
 
 fn main() {
-    let mut puzzle = input();
+    let puzzle = input();
     let moves = puzzle_solve_dfs_with_limit(puzzle);
     println!("{}", moves);
 }
@@ -186,17 +170,14 @@ mod tests {
     }
     #[test]
     fn min_dist_test() {
-        let puzzle1 = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]);
-        let puzzle2 = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]);
-        assert_eq!(puzzle1.dist(&puzzle2), 0);
+        let puzzle = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]);
+        assert_eq!(puzzle.manhattan_dist_from_solved(), 0);
 
-        let puzzle1 = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]);
-        let puzzle2 = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
-        assert_eq!(puzzle1.dist(&puzzle2), 1);
+        let puzzle = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15]);
+        assert_eq!(puzzle.manhattan_dist_from_solved(), 1);
 
-        let puzzle1 = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]);
-        let puzzle2 = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 0, 14, 15]);
-        assert_eq!(puzzle1.dist(&puzzle2), 2);
+        let puzzle = Puzzle::from_vec(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 0, 14, 15]);
+        assert_eq!(puzzle.manhattan_dist_from_solved(), 2);
     }
     #[test]
     fn min_test() {
