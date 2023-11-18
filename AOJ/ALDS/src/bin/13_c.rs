@@ -24,48 +24,42 @@ const MOVES: [Move; 4] = [Move::U, Move::R, Move::D, Move::L];
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Puzzle {
-    puzzle: [[u8; LEN]; LEN],
+    puzzle: [u8; LEN2],
+    pos: usize,
 }
 
 impl Puzzle {
     fn from_vec(slice: &[u8]) -> Self {
         debug_assert!(slice.len() == LEN.pow(2));
         let mut puzzle = Self {
-            puzzle: [[0; LEN]; LEN],
+            puzzle: [0; LEN2],
+            pos: 0,
         };
-        for i in 0..LEN {
-            for j in 0..LEN {
-                puzzle.puzzle[i][j] = slice[i * LEN + j];
+        for i in 0..LEN2 {
+            puzzle.puzzle[i] = slice[i];
+            if slice[i] == 0 {
+                puzzle.pos = i;
             }
         }
         puzzle
     }
     fn move_0(&mut self, m: Move) -> bool {
-        let (pos0_x, pos0_y) = {
-            (0..LEN)
-                .find_map(|i| {
-                    (0..LEN)
-                        .position(|j| self.puzzle[i][j] == 0)
-                        .map(|j| (i, j))
-                })
-                .unwrap()
-        };
         match m {
-            Move::U if 0 < pos0_x => {
-                self.puzzle[pos0_x][pos0_y] = self.puzzle[pos0_x - 1][pos0_y];
-                self.puzzle[pos0_x - 1][pos0_y] = 0;
+            Move::U if self.pos >= LEN => {
+                self.puzzle.swap(self.pos, self.pos - LEN);
+                self.pos -= LEN;
             }
-            Move::R if pos0_y < LEN - 1 => {
-                self.puzzle[pos0_x][pos0_y] = self.puzzle[pos0_x][pos0_y + 1];
-                self.puzzle[pos0_x][pos0_y + 1] = 0;
+            Move::R if self.pos % LEN != LEN - 1 => {
+                self.puzzle.swap(self.pos, self.pos + 1);
+                self.pos += 1;
             }
-            Move::D if pos0_x < LEN - 1 => {
-                self.puzzle[pos0_x][pos0_y] = self.puzzle[pos0_x + 1][pos0_y];
-                self.puzzle[pos0_x + 1][pos0_y] = 0;
+            Move::D if self.pos + LEN < LEN2 => {
+                self.puzzle.swap(self.pos, self.pos + LEN);
+                self.pos += LEN;
             }
-            Move::L if 0 < pos0_y => {
-                self.puzzle[pos0_x][pos0_y] = self.puzzle[pos0_x][pos0_y - 1];
-                self.puzzle[pos0_x][pos0_y - 1] = 0;
+            Move::L if self.pos % LEN != 0 => {
+                self.puzzle.swap(self.pos, self.pos - 1);
+                self.pos -= 1;
             }
             _ => {
                 return false;
@@ -76,7 +70,7 @@ impl Puzzle {
     fn manhattan_dist_from_solved(&self) -> usize {
         let mut sum = 0;
         for i in 0..LEN2 {
-            let mut v = self.puzzle[i / LEN][i % LEN] as usize;
+            let mut v = self.puzzle[i] as usize;
             if v != 0 {
                 v -= 1;
                 sum += abs(v / LEN, i / LEN) + abs(v % LEN, i % LEN);
@@ -188,9 +182,9 @@ mod tests {
     }
     #[test]
     fn tle_test() {
-        // let puzzle = vec![14, 7, 6, 4, 2, 3, 1, 11, 5, 9, 12, 15, 13, 0, 10, 8];
-        // let mut puzzle = Puzzle::from_vec(&puzzle);
-        // let min = puzzle_solve_dfs_with_limit(puzzle);
-        // assert_eq!(min, 40)
+        let puzzle = vec![14, 7, 6, 4, 2, 3, 1, 11, 5, 9, 12, 15, 13, 0, 10, 8];
+        let mut puzzle = Puzzle::from_vec(&puzzle);
+        let min = puzzle_solve_dfs_with_limit(puzzle);
+        assert_eq!(min, 40)
     }
 }
