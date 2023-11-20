@@ -1,66 +1,134 @@
 use std::ops::{Add, AddAssign, Mul, Sub};
 
-const MODINT: u128 = (1 << 32);
-
-// a < 2^61 - 1
+// mod_int should < 2^64 so that mul is well-def
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct Mod2pow61m1 {
+struct ModInt {
+    mod_int: u128,
     a: u128,
 }
 
-impl Add for Mod2pow61m1 {
+const MOD_BASES: [ModInt; 2] = [
+    ModInt {
+        mod_int: (1 << 61) - 1,
+        a: 1_000_000_007,
+    },
+    ModInt {
+        mod_int: 1_000_000_007,
+        a: 29,
+    },
+];
+
+impl ModInt {
+    fn new(mod_int: u128, a: u128) -> Self {
+        Self {
+            mod_int,
+            a: (a % mod_int),
+        }
+    }
+    fn modulo(&self) -> u128 {
+        self.mod_int
+    }
+}
+
+impl Add for ModInt {
     type Output = Self;
     fn add(self, other: Self) -> Self {
-        Mod2pow61m1 {
-            a: (self.a + other.a) % MODINT,
+        debug_assert!(self.mod_int == other.mod_int);
+        let mod_int = self.mod_int;
+        ModInt {
+            mod_int,
+            a: (self.a + other.a) % mod_int,
         }
     }
 }
 
-impl AddAssign for Mod2pow61m1 {
+impl AddAssign for ModInt {
     fn add_assign(&mut self, rhs: Self) {
+        debug_assert!(self.mod_int == rhs.mod_int);
         self.a += rhs.a;
-        self.a %= MODINT;
+        self.a %= self.mod_int;
     }
 }
 
-impl Sub for Mod2pow61m1 {
+impl Sub for ModInt {
     type Output = Self;
     fn sub(self, other: Self) -> Self {
+        debug_assert!(self.mod_int == other.mod_int);
+        let mod_int = self.mod_int;
         Self {
-            a: (self.a + MODINT - other.a) % MODINT,
+            mod_int,
+            a: (self.a + mod_int - other.a) % mod_int,
         }
     }
 }
 
-impl Mul for Mod2pow61m1 {
+impl Mul for ModInt {
     type Output = Self;
     fn mul(self, other: Self) -> Self {
+        debug_assert!(self.mod_int == other.mod_int);
+        let mod_int = self.mod_int;
         Self {
-            a: (self.a * other.a) % MODINT,
+            mod_int,
+            a: (self.a * other.a) % mod_int,
         }
     }
 }
 
-impl From<u8> for Mod2pow61m1 {
-    fn from(u: u8) -> Self {
-        Self { a: u.into() }
+// a^(2^b)
+fn pow_2(mut a: ModInt, b: usize) -> ModInt {
+    for i in 0..b {
+        a = a * a;
+    }
+    a
+}
+
+// a^b
+fn pow(a: ModInt, b: usize) -> ModInt {
+    let mut pow: ModInt = ModInt {
+        mod_int: a.mod_int,
+        a: 1,
+    };
+    for i in 0..64 {
+        if b & (1 << i) != 0 {
+            pow = pow * pow_2(a, i);
+        }
+    }
+    pow
+}
+
+// base.mod_int == hash.mod_ind
+#[derive(Debug, Clone, PartialEq)]
+struct RollingHash {
+    base: ModInt,
+    hash: ModInt,
+}
+
+impl RollingHash {
+    fn new(base: ModInt) -> Self {
+        let hash = ModInt {
+            mod_int: base.mod_int,
+            a: 0,
+        };
+        RollingHash { base, hash }
+    }
+    fn hash(&self) -> ModInt {
+        self.hash
+    }
+    fn hashing(&mut self, h: &[u8]) {
+        let n = h.len();
+        let mod_int = self.base.modulo();
+        let mut sum: ModInt = ModInt::new(mod_int, 0);
+        for i in 0..n {
+            sum += ModInt::new(mod_int, h[i] as u128) * pow(self.base, n - 1 - i);
+        }
+        self.hash = sum;
+    }
+    fn update(&mut self, next: ModInt) {
+        self.hash = next;
     }
 }
 
-impl From<usize> for Mod2pow61m1 {
-    fn from(u: usize) -> Self {
-        Self { a: u as u128 }
-    }
-}
-
-fn pow(a: Mod2pow61m1, b: Mod2pow61m1) -> Mod2pow61m1 {
-    Mod2pow61m1 {
-        a: a.a.saturating_pow(b.a as u32) % MODINT,
-    }
-}
-
-fn find_substr(t: &[u8], p: &[u8], base: usize) -> Vec<usize> {
+fn find_substr(t: &[u8], p: &[u8], bases: &[ModInt]) -> Vec<usize> {
     // debug_assert!({
     //     println!("{} {}", t.len(), p.len());
     //     true
@@ -68,35 +136,41 @@ fn find_substr(t: &[u8], p: &[u8], base: usize) -> Vec<usize> {
     let t_len = t.len();
     let p_len = p.len();
 
-    let base: Mod2pow61m1 = base.into();
-
     if t_len < p_len {
         return vec![];
     }
 
+    let mut hashes: Vec<RollingHash> = vec![];
+    let mut target_hashes: Vec<RollingHash> = vec![];
+
     let mut v = vec![];
 
-    let hasing = |c: &[u8]| {
-        debug_assert!({ c.len() == p_len });
-        let mut sum: Mod2pow61m1 = 0_usize.into();
-        for i in 0..p_len {
-            sum += Mod2pow61m1::from(c[i]) * pow(base, (p_len - 1 - i).into());
-        }
-        sum
-    };
+    for &base in bases {
+        let mut t_start_hash = RollingHash::new(base);
+        t_start_hash.hashing(&t[0..p_len]);
+        hashes.push(t_start_hash);
 
-    let mut hash = hasing(&t[0..p_len]);
-    let target_hash = hasing(&p[..]);
-    eprintln!("--{:x}", target_hash.a);
+        let mut p_hash = RollingHash::new(base);
+        p_hash.hashing(&p[..]);
+        target_hashes.push(p_hash);
+    }
+
+    // eprintln!("t{:x}", target_hashes[0].hash.a);
 
     for i in 0..=t_len - p_len {
-        eprintln!("[{}..{}] {:x}", i, i+p_len, hash.a);
+        // eprintln!("[{}..{}] {:x}", i, i + p_len, hashes[0].hash.a);
         // hash is hash of hash[i..i+p_Len]
-        if hash == target_hash {
+        if hashes == target_hashes {
             v.push(i);
         }
         if i != t_len - p_len {
-            hash = hash * base - pow(base, p_len.into()) * t[i].into() + t[i + p_len].into();
+            for (j, &base) in bases.iter().enumerate() {
+                let mod_int = base.modulo();
+                let next_hash = base * hashes[j].hash()
+                    - pow(base, p_len) * ModInt::new(mod_int, t[i] as u128)
+                    + ModInt::new(mod_int, t[i + p_len] as u128);
+                hashes[j].update(next_hash);
+            }
         }
     }
     v
@@ -104,8 +178,7 @@ fn find_substr(t: &[u8], p: &[u8], base: usize) -> Vec<usize> {
 
 fn main() {
     let (t, p) = input();
-    let base = 1_000_000_007;
-    let v = find_substr(&t, &p, base);
+    let v = find_substr(&t, &p, &MOD_BASES);
     for i in v {
         println!("{}", i);
     }
@@ -128,59 +201,83 @@ fn input() -> (Vec<u8>, Vec<u8>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn nice_base() -> Vec<ModInt> {
+        vec![ModInt {
+            mod_int: 1 << 16,
+            a: 1 << 8,
+        }]
+    }
+    #[test]
+    fn modint_test() {
+        let tests = vec![
+            (0, 0, 0),
+            (1, 1, 2),
+            (5, 4, 9),
+            (5, 5, 0),
+            (5, 6, 1),
+            (20, 11, 1),
+            ((1 << 61) - 1, (1 << 61) - 1, (2 * (1 << 61)) - 2),
+        ];
+        for (a, b, c) in tests {
+            let a = ModInt::new(10, a);
+            let b = ModInt::new(10, b);
+            let c = ModInt::new(10, c);
+            assert_eq!(a + b, c);
+        }
+    }
     #[test]
     fn unoverflowing() {
-        let a: Mod2pow61m1 = ((1 << 61) - 2_usize).into();
-        let b: Mod2pow61m1 = ((1 << 61) - 3_usize).into();
+        let a: ModInt = ModInt::new((1 << 61) - 1, (1 << 61) - 2);
+        let b: ModInt = ModInt::new((1 << 61) - 1, (1 << 61) - 3);
         let _ = a + b;
         let _ = a - b;
         let _ = b - a;
         let _ = a * b;
-        let c = pow(a, b);
-        assert_eq!(
-            Mod2pow61m1 {
-                a: (std::u128::MAX % MODINT)
-            },
-            c
-        )
+
+        let a: ModInt = ModInt::new((1 << 61) - 1, (1 << 61) - 2);
+        for b in 0..=100_usize {
+            let c = pow(a, b);
+            assert_eq!(
+                {
+                    let mut pow: ModInt = ModInt::new((1 << 61) - 1, 1);
+                    for i in 0..b {
+                        pow = pow * a;
+                    }
+                    pow
+                },
+                c
+            )
+        }
     }
     #[test]
     fn str_find_test() {
         let t = b"a";
         let p = b"a";
-        let v = find_substr(t, p, 1 << 8);
+        let v = find_substr(t, p, &nice_base());
         assert_eq!(v, vec![0]);
 
         let t = b"aaa";
         let p = b"a";
-        let v = find_substr(t, p, 1 << 8);
+        let v = find_substr(t, p, &nice_base());
         assert_eq!(v, vec![0, 1, 2]);
 
         let t = b"abab";
         let p = b"c";
-        let v = find_substr(t, p, 1 << 8);
+        let v = find_substr(t, p, &nice_base());
         assert_eq!(v, vec![]);
 
         let t = b"ababab";
         let p = b"ab";
-        let v = find_substr(t, p, 1 << 8);
+        let v = find_substr(t, p, &nice_base());
         assert_eq!(v, vec![0, 2, 4]);
     }
     #[test]
     fn long_test1() {
         let t = b"001100010001".repeat(1_000_000);
         let p = b"0011";
-        let v = find_substr(&t, p, 1 << 8);
+        let v = find_substr(&t, p, &nice_base());
         for (i, vi) in v.into_iter().enumerate() {
             assert_eq!(12 * i, vi)
         }
-    }
-    #[test]
-    fn long_test2() {
-        let t =
-        b"bcacbabbbbbabacbccaacbcacbcbcbbaabcaabbbababccaccbcaacacbacbbaccaaaabcccbcbaccacaaabbbbcbbaacabcbcaccccacbbbbcbccbbaacbcbbbbcabacbbcaaaacbabbbbcbcaccbcbaaaabbccabccccccccbacccacaccbbbcabbcbabbcabbabbabcaacabcbaccaaabcbaacaabbbcbabcabaabbcacaacbaccbbbbabccccccabbaacbcabbcbbcbacabbcabbabbabbaaacaabbaccbbaaaacbbabcaaaccbaacbbbcbcaaccbcabcbbbaaaaabbcacaabcbbbbbcbcbcccbcbcbcaccabaababcbabaccccbbaaaaccccbbababcbcabcaaccbcbbbacababbcabcbbbcabaaccaacccbabccbccbcacaabacabbbcbcabcaccaaabbabbacbbcccacaabbcbbbccbcbccacaccbaabbcabcbbcaacccacbabacaaaabcaacbccaaabbaabaaccacababbbbcccbcabbaacbcacaccaccabbaacccaabcacacbccabaaaaacaacaabbbbbaacbcaccbbbabbbcbbabbbcccaabbaacbaabbcbccccabbaabbccabccbbcacccaaacbabbabaaaabbbabbbabbacaabbbcbbcbcbacacbaccaaabbcccacccbbacbcbbbbacbabccaccaabccacaacccbacaaabcccbbcaabaabbbcbbabcbbbbccaaabccbbbaccbaaaacbcbaaacccbbcbbabbacccbababcaccbbaacbbccbaaaacbbbcaacbbacaaaabcbbabacacababbabbbbccacbbbbccbaaacabacccabababcbabbabbbaaaacbbacbabbabbbaaaabaacccabacaacbabcbaacacbbbcbbacacaaccbbcabaaabbaacbccbbbababcacbbaaaccbcbcccaaababcacacaccbcbcacaccccbcabbcccabbcaccaaaaacabbaababbccaaacabcbcbbcbaababcbbaaabcaaaaccbbbccbbbccbbbcacbcacbbacbbccccbbaababaccaabbbbbcbbcaaaabcabccabbacbacccaaacbbaaaaaaabaabacabcccabbacacabaccbababcabaccbabcbbbacaaacacccaacbaacccbbaabcacccbbaabaabcabbabaacbcbbbbcbccabbabcabcccbbccabccbcabcaaacccacbbacccbbbbcabcaaccccbbbbcbbcbcacbaabccabaccccaacacbbbaabbabccbcbbaccccbacbbcbbcbbbbabcbccccabcbbacaacbcccacbbcbcaaabccaacaabacabbacbcbbabacacaccbbbbabcaccccccbbabababbbcabccbbacccabbcbbcbbcaaababbccabbcabccccccbbbaabcbaccbabbbbbcbcacabbabacacbacbcaaaacbaccaaaccaabbcabacbcbccbbccbcccabbabbbaacaaacabccacbacabbcabccbabcbcacbcabaaccaccabaabbbbaaaaccccababaabbbcbbabbaccabbacbaacacbcbaacbbaacacbabacaccbacbcaccbbbbcbbcaabbbbbcaaccbbbbaccaabcbbabbcababcccbbcbbaabcaccabcabcaccbbabcbacbaccaacacaaacabacccacbabaababbbcaaaabcbbabcccaaabaabcaaacccaaababcbabaacaabaccaaabbaccbbbacabbbcabbcbcbccabbabbaaabaaaccacccbaccbbcbabbacccacbbacaacbacbcbbbccbbaaccccabbcbabaaabbbcbabccaacabbbccacbababbbcccbaccaacbaccbccacbbbcaabcacacbcacaccaaaabcccaaaccbbccbacbcaccaccbbaabaacaacbbaaacbbcabbccbbccacbccbaccabcaccabaaabababbaaacbbbaabcabbbcbccaaacbaabcacaabaaabcabbcacbbaabcccababbcbacbbbacbbcbbabbcaaccccbbaacccbbccacaabcabbcbbabcbcbabacabaabbbbbcacbcccabbcccbaaacccacaccaacccaaaabacabbbbbaabbabaacbbbaccaacbaccbacccaabbbbacccbabcccacccabbacabccbcabacacaabababbcbacbccabacbcabacbcbbcacaaccbbcaaabcabcbcacbabcabbbacaacbacccbcccbbcabaacbbacbbbaacabaacacbcccbbaabbabbccabaccbaabacbaccabbaabbbccaacbaccbccbcccaaccaccbbabbcacaaaaacbaccabbaccccbbabbaccbaccbabbabbccbcbacccbbcaabcbbbbcabacbbbbaabbcbccbbacbcabacabcbcccccbbacbbccabcbccbcabcccccbcbbcbbbccbacaccbaacccabaabccbababbcacbaabaaccaaaabcacbacbbccbbaacabcaccbaaabbbbbccacbbbccbcbaacabaabcbaabbccaacaccacbcbbbbacbcabaacabbbacaaaccbccbbcbabacbccbcacbaacbcababbcbacccabbbcccabbccbbabaabcbacccaaaccaabbaabccbbbacbbbbbabcabcacaababaaabacbaacabcbcaabbcbcbacbbaaabaaacbcaccacacbaacbccabaccbbacbaacaaccbbccbacaacacccacccccbcbbccaaacacbccacbaacaacabcabbcccbacacabcabcabcaabccccaabcbcbbcacacaaaccbbccacabbcbabbacbccaacbaabcacbabbaabaaabbcbcbaaacaaaccaabcbbccababaabbbabaacabaacbaabbaaccccccbcabccababbbbcabaccbcbcbbcabccaacacbacabbbcaaccabcccbcaacaccacccbcbccbabaccccbabaaaccaacbabccbcbbaaacacaabcccabbabaaaaacabcbabccabacbbaacacabbbbbbcbacabbaaacbaccacbbbbcbccaabcbacaaccaacabccbcbccabbcacbababbccabacaaaacaabbcaacbaaaabaccaaaccbaabbbccacaabaacbccbabaaacababcbcacbbcbabcaccbaaacabbaccbabbcaacaabcacaccacbccaaaaccbbcccbccbabcaacbcabcbbabbbcccbbcabbacbabbbbabbcbcaabbbaabaaaccaaacbbbbcaabbcaababcbabcbcccbcbbcabbbaabbacaaaabacaccccbbcbabaccbbacbccaccababcbaabbaaacabacaabbbccbbbccbaabbcaaacbbacbaccaccbbbcbaaaaccbaaaababbcacccabbbbbacaabbbbcbaaccbabacacacccbbacabababacacbcaccaaacaaabacbabbbbbbcabbaababbbbbbcbaabacabbbaccccacccaaccbbaccbaabbbaaaaccbcccccabcabacbbcaacbbcababbbbbbbbbabaaccacbbacaaaaabaacacbababaccababaaaabccbaacabaacbcbacabbabbbcbbabbcbababbcbaaaacacaabcbcbcbbbccabbbccbacbcaccbbcbcacbbccbbbcbbbcccbaccaabaaccccabaabcabccacabaaabcaabababccabccaacbcaabcbbacbacacbaacabccbabaccacbaccccabcaaaabcbcacccbbbcabcacbcaccababcaaabcaabbabbcacbcbaabccccccbccbaccbbacababacacbaccaacccbccaccbabacaacaacababbcbabbbbbaaaabacaabbcbacabcbcacacbbaaccbaacbccacacccbaccbcabcabcbacbaaabbacaaabaabbabacaabbcbabacbcccbaabacccaacbbaacabcbacabbaaabaccbbbcabbbababcababbccbcacbbaacbaacbcabbbbbbabcbbbbaacaabbcacbbccabcaaccbaabbababcbccbcbbababcaaacbbcaababacbccacacbbabaacbbacaacbcbbcaccabaaaccabcccaacccccbcbbaaacaabcbcbbaacaccaccabcaaacababcaacaccacbccbbababaacaabbaaccbbbccabcababacaabcbaacaacbcacccbbaabacbcabacbcccbaabcbaccaccacabccabbbaaabcbbccccccaacababaaacbbcbcbaabacbabacbbcabbabcacaabcacbbbbaccaccbacaaaabcbcbbabbccbcbabacbacabbbcbccaabccbaabacaabcaabbccababacaacaacbcccbabccccbccbacabcababbababccaccabccacbaabbbcacbccaaccbacabaaacbccbabaacbbbbcacbbbcaabbabcacabbcbccacbcbcbcabacabcacaacccbbacbaaabbbcaaccacaacccbabcacbaaababbbaacbcabccbcaabccabccbbbcccbabbbbbbabbcbbbabcccccacacbbcabbaacccbaaaccbabbcbbcbccbcbaabbcaccaccbaacaba";
-        let p = b"bcabccab";
-        let v = find_substr(t, p, 1 << 16);
-        assert_eq!(v.contain(vec![1191, 3160]))
     }
 }
