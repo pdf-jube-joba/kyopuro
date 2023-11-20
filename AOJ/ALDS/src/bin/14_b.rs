@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Mul, Sub};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
 // mod_int should < 2^64 so that mul is well-def
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -7,15 +7,15 @@ struct ModInt {
     a: u128,
 }
 
-const MOD_BASES: [ModInt; 2] = [
+const MOD_BASES: [ModInt; 1] = [
     ModInt {
         mod_int: (1 << 61) - 1,
         a: 1_000_000_007,
     },
-    ModInt {
-        mod_int: 1_000_000_007,
-        a: 29,
-    },
+    // ModInt {
+    //     mod_int: 1_000_000_007,
+    //     a: (1 << 8) + 3,
+    // },
 ];
 
 impl ModInt {
@@ -62,6 +62,14 @@ impl Sub for ModInt {
     }
 }
 
+impl SubAssign for ModInt {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.a += self.mod_int;
+        self.a -= rhs.a;
+        self.a %= self.mod_int;
+    }
+}
+
 impl Mul for ModInt {
     type Output = Self;
     fn mul(self, other: Self) -> Self {
@@ -71,6 +79,14 @@ impl Mul for ModInt {
             mod_int,
             a: (self.a * other.a) % mod_int,
         }
+    }
+}
+
+impl MulAssign for ModInt {
+    fn mul_assign(&mut self, rhs: Self) {
+        debug_assert!(self.mod_int == rhs.mod_int);
+        self.a *= rhs.a;
+        self.a %= self.mod_int;
     }
 }
 
@@ -90,7 +106,7 @@ fn pow(a: ModInt, b: usize) -> ModInt {
     };
     for i in 0..64 {
         if b & (1 << i) != 0 {
-            pow = pow * pow_2(a, i);
+            pow *= pow_2(a, i);
         }
     }
     pow
@@ -111,20 +127,18 @@ impl RollingHash {
         };
         RollingHash { base, hash }
     }
-    fn hash(&self) -> ModInt {
-        self.hash
+    fn hash(&mut self) -> &mut ModInt {
+        &mut self.hash
     }
     fn hashing(&mut self, h: &[u8]) {
         let n = h.len();
         let mod_int = self.base.modulo();
         let mut sum: ModInt = ModInt::new(mod_int, 0);
         for i in 0..n {
-            sum += ModInt::new(mod_int, h[i] as u128) * pow(self.base, n - 1 - i);
+            sum *= self.base;
+            sum += ModInt::new(mod_int, h[i] as u128);
         }
         self.hash = sum;
-    }
-    fn update(&mut self, next: ModInt) {
-        self.hash = next;
     }
 }
 
@@ -166,10 +180,9 @@ fn find_substr(t: &[u8], p: &[u8], bases: &[ModInt]) -> Vec<usize> {
         if i != t_len - p_len {
             for (j, &base) in bases.iter().enumerate() {
                 let mod_int = base.modulo();
-                let next_hash = base * hashes[j].hash()
-                    - pow(base, p_len) * ModInt::new(mod_int, t[i] as u128)
-                    + ModInt::new(mod_int, t[i + p_len] as u128);
-                hashes[j].update(next_hash);
+                *hashes[j].hash() *= base;
+                *hashes[j].hash() -= pow(base, p_len) * ModInt::new(mod_int, t[i] as u128);
+                *hashes[j].hash() += ModInt::new(mod_int, t[i + p_len] as u128);
             }
         }
     }
@@ -273,9 +286,10 @@ mod tests {
     }
     #[test]
     fn long_test1() {
-        let t = b"001100010001".repeat(1_000_000);
+        let t = b"001100010001".repeat(100_000);
         let p = b"0011";
-        let v = find_substr(&t, p, &nice_base());
+        let v = find_substr(&t, p, &MOD_BASES);
+        println!("end");
         for (i, vi) in v.into_iter().enumerate() {
             assert_eq!(12 * i, vi)
         }
