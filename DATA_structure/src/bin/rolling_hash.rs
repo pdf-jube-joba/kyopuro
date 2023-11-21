@@ -291,7 +291,7 @@ fn find_substr_2_61_1(t: &[u8], p: &[u8], bases: &[u128]) -> Vec<usize> {
             pow
         }
         
-        pow_2_mod(*base, p_len)
+        pow_mod(*base, p_len)
     }).collect::<Vec<_>>();
 
     let mut v = vec![];
@@ -415,9 +415,25 @@ mod tests {
     }
     #[test]
     fn long_test1() {
+        // let t = b"001100010001".repeat(100_000);
+        // let p = b"0011";
+        // let v = find_substr(&t, p, &MOD_BASES);
+        // println!("end");
+        // for (i, vi) in v.into_iter().enumerate() {
+        //     assert_eq!(12 * i, vi)
+        // }
+
+        // let t = b"001100010001".repeat(100_000);
+        // let p = b"0011";
+        // let v = find_substr2(&t, p, &MOD_BASES);
+        // println!("end");
+        // for (i, vi) in v.into_iter().enumerate() {
+        //     assert_eq!(12 * i, vi)
+        // }
+
         let t = b"001100010001".repeat(100_000);
         let p = b"0011";
-        let v = find_substr(&t, p, &MOD_BASES);
+        let v = find_substr_2_61_1(&t, p, &[100_000_007]);
         println!("end");
         for (i, vi) in v.into_iter().enumerate() {
             assert_eq!(12 * i, vi)
