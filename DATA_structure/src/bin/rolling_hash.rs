@@ -18,6 +18,13 @@ const MOD_BASES: [ModInt; 2] = [
     },
 ];
 
+const MOD_BASES2: [ModInt; 1] = [
+    ModInt {
+        mod_int: (1 << 61) - 1,
+        a: 1_000_000_007,
+    },
+];
+
 impl ModInt {
     fn new(mod_int: u128, a: u128) -> Self {
         Self {
@@ -189,26 +196,148 @@ fn find_substr(t: &[u8], p: &[u8], bases: &[ModInt]) -> Vec<usize> {
     v
 }
 
-fn main() {
-    let (t, p) = input();
-    let v = find_substr(&t, &p, &MOD_BASES);
-    for i in v {
-        println!("{}", i);
+fn find_substr2(t: &[u8], p: &[u8], bases: &[ModInt]) -> Vec<usize> {
+    let t_len = t.len();
+    let p_len = p.len();
+
+    if t_len < p_len {
+        return vec![];
     }
+    
+    let mut hashes = bases.iter().map(|base| {
+        let mod_int = base.modulo();
+        let mut sum = ModInt::new(mod_int, 0);
+        for i in 0..p_len {
+            sum *= *base;
+            sum += ModInt::new(mod_int, t[i] as u128);
+        }
+        sum
+    }).collect::<Vec<_>>();
+
+    let targets_hashes = bases.iter().map(|base|{
+        let mod_int = base.modulo();
+        let mut sum = ModInt::new(mod_int, 0);
+        for i in 0..p_len {
+            sum *= *base;
+            sum += ModInt::new(mod_int, p[i] as u128);
+        }
+        sum
+    }).collect::<Vec<_>>();
+
+    let mut v = vec![];
+    for i in 0..t_len-p_len {
+        if hashes == targets_hashes {
+            v.push(i);
+        }
+        for (j, &base) in bases.iter().enumerate() {
+            let mod_int = base.modulo();
+            hashes[j] *= base;
+            hashes[j] -= pow(base, p_len) * ModInt::new(mod_int, t[i] as u128);
+            hashes[j] += ModInt::new(mod_int, t[i + p_len] as u128);
+        }
+    }
+
+    v
 }
 
-fn input() -> (Vec<u8>, Vec<u8>) {
-    let mut buf = String::new();
-    let stdin = std::io::stdin();
+const MODINT: u128 = (1 << 61) - 1;
 
-    stdin.read_line(&mut buf).unwrap();
-    let t = buf.trim().as_bytes().to_vec();
+fn find_substr_2_61_1(t: &[u8], p: &[u8], bases: &[u128]) -> Vec<usize> {
+    let t_len = t.len();
+    let p_len = p.len();
 
-    buf.clear();
-    stdin.read_line(&mut buf).unwrap();
-    let p = buf.trim().as_bytes().to_vec();
+    if t_len < p_len {
+        return vec![];
+    }
 
-    (t, p)
+    let mut hashes = bases.iter().map(|base| {
+        let mut sum = 0;
+        for i in 0..p_len {
+            sum *= base;
+            sum += t[i] as u128;
+            sum %= MODINT;
+        }
+        sum
+    }).collect::<Vec<_>>();
+
+    let target_hashes = bases.iter().map(|base| {
+        let mut sum = 0;
+        for i in 0..p_len {
+            sum *= base;
+            sum += p[i] as u128;
+            sum %= MODINT;
+        }
+        sum
+    }).collect::<Vec<_>>();
+
+    let base_pows = bases.iter().map(|base| {
+        // a^(2^b)
+        fn pow_2_mod(mut a: u128, b: usize) -> u128 {
+            for i in 0..b {
+                a = (a * a) % MODINT;
+            }
+            a
+        }
+
+        // a^b
+        fn pow_mod(a: u128, b: usize) -> u128 {
+            let mut pow = 1;
+            for i in 0..64 {
+                if b & (1 << i) != 0 {
+                    pow *= pow_2_mod(a, i);
+                    pow %= MODINT;
+                }
+            }
+            pow
+        }
+        
+        pow_2_mod(*base, p_len)
+    }).collect::<Vec<_>>();
+
+    let mut v = vec![];
+
+    for i in 0..t_len-p_len {
+        if hashes == target_hashes {
+            v.push(i);
+        }
+        if i != t_len-p_len {
+            for (j, base) in bases.iter().enumerate() {
+                hashes[j] *= base;
+                hashes[j] += MODINT;
+                hashes[j] -= base_pows[j] * (t[i] as u128);
+                hashes[j] += t[i+p_len] as u128;
+                hashes[j] %= MODINT;
+            }
+        }
+    }
+
+    v
+}
+
+fn main() {
+    use std::time::Instant;
+    let t = b"00110001000101011110".repeat(50_000); // 1_000_000 chars
+    let p = b"00110001000101011110".repeat(500); // 10_000 chars
+
+    let start_time = Instant::now();
+    let v = find_substr(&t, &p, &MOD_BASES);
+    let end_time = Instant::now();
+    println!("{:?}", end_time - start_time);
+
+    let start_time = Instant::now();
+    let v = find_substr(&t, &p, &MOD_BASES2);
+    let end_time = Instant::now();
+    println!("{:?}", end_time - start_time);
+
+    let start_time = Instant::now();
+    let v = find_substr2(&t, &p, &MOD_BASES2);
+    let end_time = Instant::now();
+    println!("{:?}", end_time - start_time);
+
+    let start_time = Instant::now();
+    let v = find_substr_2_61_1(&t, &p, &[1_000_000_007]);
+    let end_time = Instant::now();
+    println!("{:?}", end_time - start_time);
 }
 
 #[cfg(test)]
