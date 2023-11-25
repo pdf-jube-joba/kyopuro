@@ -47,36 +47,26 @@ mod suffix_array {
         v
     }
 
-    pub struct SuffixArray<'a> {
-        s: &'a [u8],
-        suffix_array: Vec<usize>,
-    }
-
     // input suffix_array filled by none
     // output suffix_array filled all of LMS-type index by reverse
-    fn first_lms_insert(
-        s: &[u8],
+    fn first_lms_insert<T: Ord + Clone>(
+        s: &[T],
         suffix_array: &mut [Option<usize>],
         sl_type_array: &[SLType],
-        bucket_range: &BTreeMap<u8, (usize, usize)>,
+        bucket_range: &BTreeMap<T, (usize, usize)>,
     ) {
         let m = s.len();
-        let is_lms = |i: usize| {
-            if i == 0 {
-                false
-            } else {
-                sl_type_array[i] == SLType::S && sl_type_array[i - 1] == SLType::L
-            }
-        };
+        let is_lms =
+            |i: usize| i > 0 && sl_type_array[i] == SLType::S && sl_type_array[i - 1] == SLType::L;
 
         // remember index of where we putted LMS in suffix array
         // lms_back_index[c] = i <=> for any i,
         // - suffix_array[l, i) is None
         // - suffix_array[i, r) consists of all LMS index larger than i starting at c,
         // where bucket_range[c] = [l, r)
-        let mut lms_back_index: BTreeMap<u8, usize> = BTreeMap::new();
+        let mut lms_back_index: BTreeMap<T, usize> = BTreeMap::new();
         for (c, (_start, end)) in bucket_range {
-            lms_back_index.insert(*c, *end);
+            lms_back_index.insert(c.clone(), *end);
         }
 
         // at any head of loop
@@ -94,11 +84,11 @@ mod suffix_array {
 
     // input suffix_array with lms
     // output suffix_array with l-type (lms is annihilated)
-    fn ltype_from_lms(
-        s: &[u8],
+    fn ltype_from_lms<T: Ord + Clone>(
+        s: &[T],
         suffix_array: &mut [Option<usize>],
         sl_type_array: &[SLType],
-        bucket_range: &BTreeMap<u8, (usize, usize)>,
+        bucket_range: &BTreeMap<T, (usize, usize)>,
     ) {
         let m = s.len();
         // remember index for which we put L-type
@@ -106,9 +96,9 @@ mod suffix_array {
         // - suffix_array[l, i) is putted L-type index
         // - suffix_array[i, r) is none or LMS-type,
         // where bucket_range[c] = [l, r)
-        let mut ltype_front_index: BTreeMap<u8, usize> = BTreeMap::new();
+        let mut ltype_front_index: BTreeMap<T, usize> = BTreeMap::new();
         for (c, (start, _end)) in bucket_range {
-            ltype_front_index.insert(*c, *start);
+            ltype_front_index.insert(c.clone(), *start);
         }
 
         // insert L-type index
@@ -137,12 +127,12 @@ mod suffix_array {
     }
 
     // input suffix_array which is inserted of all L-type index
-    // output 
-    fn stype_from_ltype(
-        s: &[u8],
+    // output
+    fn stype_from_ltype<T: Ord + Clone>(
+        s: &[T],
         suffix_array: &mut [Option<usize>],
         sl_type_array: &[SLType],
-        bucket_range: &BTreeMap<u8, (usize, usize)>,
+        bucket_range: &BTreeMap<T, (usize, usize)>,
     ) {
         let m = s.len();
 
@@ -151,9 +141,9 @@ mod suffix_array {
         // - suffix_array[l, i) is L-type index or None
         // - suffix_array[i, r) is S-type
         // where bucket_range[c] = [l, r)
-        let mut stype_back_index: BTreeMap<u8, usize> = BTreeMap::new();
+        let mut stype_back_index: BTreeMap<T, usize> = BTreeMap::new();
         for (c, (_start, end)) in bucket_range {
-            stype_back_index.insert(*c, *end);
+            stype_back_index.insert(c.clone(), *end);
         }
 
         // insert S-type
@@ -171,23 +161,30 @@ mod suffix_array {
         suffix_array[0] = Some(m);
     }
 
-    fn induced_sorting(
-        s: &[u8],
+    // input suffix_array_filled_with_SL-type
+    // return LMS-index with same order
+    fn collect_lms_block<T: Ord + Clone>(
+        s: &[T],
         suffix_array: &mut [Option<usize>],
         sl_type_array: &[SLType],
-        bucket_range: &BTreeMap<u8, (usize, usize)>,
+        bucket_range: &BTreeMap<T, (usize, usize)>,
     ) {
-        // 1. first lms
-        first_lms_insert(s, suffix_array, sl_type_array, bucket_range);
-        // 2. L-type insert
-        ltype_from_lms(s, suffix_array, sl_type_array, bucket_range);
-        // 3. S-type insert
-        stype_from_ltype(s, suffix_array, sl_type_array, bucket_range);
+        let m = s.len();
+        let is_lms =
+            |i: usize| i > 0 && sl_type_array[i] == SLType::S && sl_type_array[i - 1] == SLType::L;
+
+        let ordered_lms_index: Vec<usize> = (0..=m).filter(|i| is_lms(*i)).collect();
+
+        todo!()
+    }
+    pub struct SuffixArray<'a, T: Ord + Clone> {
+        s: &'a [T],
+        suffix_array: Vec<usize>,
     }
 
-    impl<'a> SuffixArray<'a> {
+    impl<'a, T> SuffixArray<'a, T> where T: Ord + Clone + std::hash::Hash {
         // using SA-IS
-        pub fn new(s: &'a [u8]) -> Self {
+        pub fn new(s: &'a [T]) -> Self {
             let m = s.len();
 
             let sl_type_array: Vec<SLType> = construct_sl_type(s);
@@ -205,9 +202,8 @@ mod suffix_array {
 
             // 1. put LMS index at bucket in suffix_array by reverse order
             first_lms_insert(s, &mut suffix_array, &sl_type_array, &bucket_range);
-
-            // 2. induced sorting L-type index using LMS
-            induced_sorting(s, &mut suffix_array, &sl_type_array, &bucket_range);
+            ltype_from_lms(s, &mut suffix_array, &sl_type_array, &bucket_range);
+            stype_from_ltype(s, &mut suffix_array, &sl_type_array, &bucket_range);
 
             Self {
                 s,
@@ -278,7 +274,7 @@ mod suffix_array {
                 s: &[u8],
                 expect_after_lms_insert: Vec<Option<usize>>,
                 expect_after_ltype: Vec<Option<usize>>,
-                // expect_after_stype: Vec<Option<usize>>,
+                expect_after_stype: Vec<Option<usize>>,
             ) {
                 let m = s.len();
                 let mut suffix_array: Vec<Option<usize>> = vec![None; m + 1];
@@ -289,15 +285,15 @@ mod suffix_array {
                 ltype_from_lms(s, &mut suffix_array, &sl_type_array, &bucket_range);
                 assert_eq!(suffix_array, expect_after_ltype);
                 stype_from_ltype(s, &mut suffix_array, &sl_type_array, &bucket_range);
-                // assert_eq!(suffix_array, expect_after_stype);
+                assert_eq!(suffix_array, expect_after_stype);
             }
 
             let s = b"";
             //                  S
             let v1 = vec![Some(0)];
-            let v2 = vec![Some(0)];
-            // let v3 = vec![];
-            test(s, v1, v2);
+            let v2 = vec![None];
+            let v3 = vec![Some(0)];
+            test(s, v1, v2, v3);
 
             let s = b"a";
             //                  LS
@@ -309,7 +305,8 @@ mod suffix_array {
             // 10
             let v1 = vec![Some(1), None];
             let v2 = vec![None, Some(0)];
-            test(s, v1, v2);
+            let v3 = vec![Some(1), Some(0)];
+            test(s, v1, v2, v3);
 
             let s = b"ba";
             //                  LLS
@@ -317,10 +314,12 @@ mod suffix_array {
 
             // $ab
             // 2--
+            // -10
             // 210
             let v1 = vec![Some(2), None, None];
-            let v2 = vec![Some(2), Some(1), Some(0)];
-            test(s, v1, v2);
+            let v2 = vec![None, Some(1), Some(0)];
+            let v3 = vec![Some(2), Some(1), Some(0)];
+            test(s, v1, v2, v3);
 
             let s = b"ab";
             //                  SLS
@@ -328,10 +327,12 @@ mod suffix_array {
 
             // $ab
             // 2--
+            // --1
             // 201
             let v1 = vec![Some(2), None, None];
-            let v2 = vec![Some(2), None, Some(1)];
-            test(s, v1, v2);
+            let v2 = vec![None, None, Some(1)];
+            let v3 = vec![Some(2), Some(0), Some(1)];
+            test(s, v1, v2, v3);
 
             let s = b"bab";
             //                  LSLS
@@ -339,10 +340,12 @@ mod suffix_array {
 
             // $abb
             // 31--
+            // --20
             // 3120
             let v1 = vec![Some(3), Some(1), None, None];
-            let v2 = vec![];
-            test(s, v1, v2);
+            let v2 = vec![None, None, Some(2), Some(0)];
+            let v3 = vec![Some(3), Some(1), Some(2), Some(0)];
+            test(s, v1, v2, v3);
 
             let s = b"babba";
             //                  LSLLLS
@@ -350,10 +353,12 @@ mod suffix_array {
 
             // $aabbb
             // 5-1---
+            // -4-302
             // 541302
             let v1 = vec![Some(5), None, Some(1), None, None, None];
-            let v2 = vec![Some(5), Some(4), Some(1), Some(3), Some(0), Some(2)];
-            test(s, v1, v2);
+            let v2 = vec![None, Some(4), None, Some(3), Some(0), Some(2)];
+            let v3 = vec![Some(5), Some(4), Some(1), Some(3), Some(0), Some(2)];
+            test(s, v1, v2, v3);
 
             let s = b"acbcaca";
             //                  SLSLSLLS
@@ -361,20 +366,21 @@ mod suffix_array {
 
             // $aaabccc
             // 7--42---
-            // 76-4253-
-            //
+            // -6---531
+            // 76402531
             let v1 = vec![Some(7), None, None, Some(4), Some(2), None, None, None];
-            let v2 = vec![
+            let v2 = vec![None, Some(6), None, None, None, Some(5), Some(3), Some(1)];
+            let v3 = vec![
                 Some(7),
                 Some(6),
-                Some(5),
                 Some(4),
+                Some(0),
                 Some(2),
+                Some(5),
                 Some(3),
                 Some(1),
-                None,
             ];
-            test(s, v1, v2);
+            test(s, v1, v2, v3);
         }
         #[test]
         fn test_suffix_array() {
