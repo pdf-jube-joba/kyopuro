@@ -239,26 +239,10 @@ mod suffix_array {
                 if !is_lms(sl_type_array, suf_ind) {
                     continue;
                 }
-                let lms_end = {
-                    let mut lms_end = None;
-                    for i in suf_ind + 1..=m {
-                        if is_lms(sl_type_array, i) {
-                            lms_end = Some(i);
-                            break;
-                        }
-                    }
-                    match lms_end {
-                        Some(i) => i,
-                        None => m,
-                    }
-                };
-                println!("{sl_type_array:?} {suf_ind}");
-                let lms_end2 = (suf_ind + 1..=m)
+                let lms_end = (suf_ind + 1..=m)
                     .find(|i| is_lms(sl_type_array, *i))
                     .unwrap_or(m);
-                assert_eq!(lms_end, lms_end2); // ??????
                 let lms_block = (suf_ind..lms_end).map(|i| s[i].clone()).collect();
-                dbg!(i, suf_ind, lms_end, &lms_block);
                 if lms_block != prev {
                     count += 1;
                 }
@@ -421,6 +405,7 @@ mod suffix_array {
                 expect_after_ltype: Vec<Option<usize>>,
                 expect_after_stype: Vec<Option<usize>>,
                 expect_right_lms_order: Vec<usize>,
+                expect_suffix_array: Vec<usize>,
             ) {
                 // input suffix_array filled by none
                 // output suffix_array filled all of LMS-type index by reverse
@@ -445,81 +430,90 @@ mod suffix_array {
                 suffix_array = vec![None; m + 1];
                 assert_eq!(right_order, expect_right_lms_order);
 
-                // lms_insert(s, &mut suffix_array, &bucket_range, right_order);
+                lms_insert(s, &mut suffix_array, &bucket_range, right_order);
 
-                // ltype_from_lms(s, &mut suffix_array, &sl_type_array, &bucket_range);
-                // stype_from_ltype(s, &mut suffix_array, &sl_type_array, &bucket_range);
+                ltype_from_lms(s, &mut suffix_array, &sl_type_array, &bucket_range);
+                stype_from_ltype(s, &mut suffix_array, &sl_type_array, &bucket_range);
+
+                let suffix_array = suffix_array.into_iter().map(|i| i.unwrap()).collect::<Vec<_>>();
+
+                assert_eq!(suffix_array, expect_suffix_array);
             }
 
-            // let s = b"a";
-            // //                  LS
-            // // LMS               *
+            let s = b"a";
+            //                  LS
+            // LMS               *
 
-            // // $a
-            // // 1-
-            // // -0
-            // // 10
-            // let v1 = vec![Some(1), None];
-            // let v2 = vec![None, Some(0)];
-            // let v3 = vec![Some(1), Some(0)];
-            // let v4 = vec![1];
-            // test(s, v1, v2, v3, v4);
+            // $a
+            // 1-
+            // -0
+            // 10
+            let v1 = vec![Some(1), None];
+            let v2 = vec![None, Some(0)];
+            let v3 = vec![Some(1), Some(0)];
+            let v4 = vec![1];
+            let v5 = vec![1,0];
+            test(s, v1, v2, v3, v4, v5);
 
-            // let s = b"ba";
-            // //                  LLS
-            // // LMS                *
+            let s = b"ba";
+            //                  LLS
+            // LMS                *
 
-            // // $ab
-            // // 2--
-            // // -10
-            // // 210
-            // let v1 = vec![Some(2), None, None];
-            // let v2 = vec![None, Some(1), Some(0)];
-            // let v3 = vec![Some(2), Some(1), Some(0)];
-            // let v4 = vec![2];
-            // test(s, v1, v2, v3, v4);
+            // $ab
+            // 2--
+            // -10
+            // 210
+            let v1 = vec![Some(2), None, None];
+            let v2 = vec![None, Some(1), Some(0)];
+            let v3 = vec![Some(2), Some(1), Some(0)];
+            let v4 = vec![2];
+            let v5 = vec![2,1,0];
+            test(s, v1, v2, v3, v4, v5);
 
-            // let s = b"ab";
-            // //                  SLS
-            // // LMS                *
+            let s = b"ab";
+            //                  SLS
+            // LMS                *
 
-            // // $ab
-            // // 2--
-            // // --1
-            // // 201
-            // let v1 = vec![Some(2), None, None];
-            // let v2 = vec![None, None, Some(1)];
-            // let v3 = vec![Some(2), Some(0), Some(1)];
-            // let v4 = vec![2];
-            // test(s, v1, v2, v3, v4);
+            // $ab
+            // 2--
+            // --1
+            // 201
+            let v1 = vec![Some(2), None, None];
+            let v2 = vec![None, None, Some(1)];
+            let v3 = vec![Some(2), Some(0), Some(1)];
+            let v4 = vec![2];
+            let v5 = vec![2,0,1];
+            test(s, v1, v2, v3, v4, v5);
 
-            // let s = b"bab";
-            // //                  LSLS
-            // // LMS               1 3
+            let s = b"bab";
+            //                  LSLS
+            // LMS               1 3
 
-            // // $abb
-            // // 31--
-            // // --20
-            // // 3120
-            // let v1 = vec![Some(3), Some(1), None, None];
-            // let v2 = vec![None, None, Some(2), Some(0)];
-            // let v3 = vec![Some(3), Some(1), Some(2), Some(0)];
-            // let v4 = vec![3,1];
-            // test(s, v1, v2, v3, v4);
+            // $abb
+            // 31--
+            // --20
+            // 3120
+            let v1 = vec![Some(3), Some(1), None, None];
+            let v2 = vec![None, None, Some(2), Some(0)];
+            let v3 = vec![Some(3), Some(1), Some(2), Some(0)];
+            let v4 = vec![3,1];
+            let v5 = vec![3,1,2,0];
+            test(s, v1, v2, v3, v4, v5);
 
-            // let s = b"babba";
-            // //                  LSLLLS
-            // // LMS               1   5
+            let s = b"babba";
+            //                  LSLLLS
+            // LMS               1   5
 
-            // // $aabbb
-            // // 5-1---
-            // // -4-302
-            // // 541302
-            // let v1 = vec![Some(5), None, Some(1), None, None, None];
-            // let v2 = vec![None, Some(4), None, Some(3), Some(0), Some(2)];
-            // let v3 = vec![Some(5), Some(4), Some(1), Some(3), Some(0), Some(2)];
-            // let v4 = vec![5,1];
-            // test(s, v1, v2, v3, v4);
+            // $aabbb
+            // 5-1---
+            // -4-302
+            // 541302
+            let v1 = vec![Some(5), None, Some(1), None, None, None];
+            let v2 = vec![None, Some(4), None, Some(3), Some(0), Some(2)];
+            let v3 = vec![Some(5), Some(4), Some(1), Some(3), Some(0), Some(2)];
+            let v4 = vec![5,1];
+            let v5 = vec![5,4,1,3,0,2];
+            test(s, v1, v2, v3, v4, v5);
 
             let s = b"acbcaca";
             //                  SLSLSLLS
@@ -542,17 +536,9 @@ mod suffix_array {
                 Some(1),
             ];
             let v4 = vec![7, 4, 2];
-            test(s, v1, v2, v3, v4);
+            let v5 = vec![7,6,4,0,2,5,3,1];
+            test(s, v1, v2, v3, v4, v5);
         }
-        #[test]
-        fn test_suffix_array() {
-            let a = b"";
-            let _ = SuffixArray::new(a);
-
-            let a = b"a";
-            let _ = SuffixArray::new(a);
-        }
-
     }
 }
 
