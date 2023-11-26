@@ -48,7 +48,7 @@ mod suffix_array {
     }
 
     // insert lms index into suffix array with specified order
-    fn lms_insert<T: Ord + Clone>(
+    fn lms_insert<T: Ord + Clone + std::fmt::Debug>(
         s: &[T],
         suffix_array: &mut [Option<usize>],
         bucket_range: &BTreeMap<T, (usize, usize)>,
@@ -87,7 +87,7 @@ mod suffix_array {
         }
     }
 
-    fn get_wrong_order_lms<T: Ord + Clone>(
+    fn get_wrong_order_lms<T: Ord + Clone + std::fmt::Debug>(
         s: &[T],
         suffix_array: &mut [Option<usize>],
         sl_type_array: &[SLType],
@@ -101,7 +101,7 @@ mod suffix_array {
 
     // input suffix_array with lms
     // output suffix_array with l-type (lms is annihilated)
-    fn ltype_from_lms<T: Ord + Clone>(
+    fn ltype_from_lms<T: Ord + Clone + std::fmt::Debug>(
         s: &[T],
         suffix_array: &mut [Option<usize>],
         sl_type_array: &[SLType],
@@ -145,7 +145,7 @@ mod suffix_array {
 
     // input suffix_array which is inserted of all L-type index
     // output
-    fn stype_from_ltype<T: Ord + Clone>(
+    fn stype_from_ltype<T: Ord + Clone + std::fmt::Debug>(
         s: &[T],
         suffix_array: &mut [Option<usize>],
         sl_type_array: &[SLType],
@@ -180,7 +180,7 @@ mod suffix_array {
 
     // input suffix_array_filled_with_SL-type
     // return LMS reduced string
-    fn collect_lms_compressed_string<T: Ord + Clone>(
+    fn collect_lms_compressed_string<T: Ord + Clone + std::fmt::Debug>(
         s: &[T],
         suffix_array: &mut [Option<usize>],
         sl_type_array: &[SLType],
@@ -190,33 +190,35 @@ mod suffix_array {
 
         let mut ordered_lms_ind_count: Vec<(usize, usize)> = {
             let mut count = 0;
-            let mut prev = None;
-            (0..=m)
-                .filter_map(|i| {
-                    let j = suffix_array[i].unwrap();
-                    if is_lms(sl_type_array, j) {
-                        Some(j)
-                    } else {
-                        None
-                    }
-                })
-                .map(|i| {
-                    let lms_block = {
-                        let lms_end = (i + 1..=m)
-                            .position(|i| is_lms(sl_type_array, i))
-                            .unwrap_or(m);
-                        s[i..lms_end].to_vec()
-                    };
-                    if Some(&lms_block) != prev.as_ref() {
-                        count += 1;
-                    }
-                    prev = Some(lms_block);
-                    (i, count)
-                })
-                .collect()
-        };
+            let mut prev = vec![];
 
-        println!("{:?}", ordered_lms_ind_count);
+            let mut v = vec![];
+            for i in 0..=m {
+                let suf_ind = suffix_array[i].unwrap();
+                if !is_lms(sl_type_array, suf_ind) {
+                    continue;
+                }
+                dbg!(i, &v);
+                let lms_block = {
+                    let lms_end = (suf_ind + 1..=m)
+                        .position(|i| is_lms(sl_type_array, i))
+                        .unwrap_or(m);
+                    assert!(lms_end <= m);
+                    if suf_ind < m {
+                        s[suf_ind..lms_end].to_vec()
+                    } else {
+                        vec![]
+                    }
+                };
+                if lms_block != prev {
+                    count += 1;
+                }
+                v.push((suf_ind, count));
+                prev = lms_block;
+            }
+            println!("end");
+            v
+        };
 
         ordered_lms_ind_count.sort_by(|(ind1, _), (ind2, _)| ind1.cmp(ind2));
 
@@ -226,7 +228,7 @@ mod suffix_array {
             .collect()
     }
 
-    fn get_right_order<T: Ord + Clone>(
+    fn get_right_order<T: Ord + Clone + std::fmt::Debug>(
         s: &[T],
         suffix_array: &mut [Option<usize>],
         sl_type_array: &[SLType],
@@ -234,22 +236,21 @@ mod suffix_array {
     ) -> Vec<usize> {
         let m = s.len();
         let red_str = collect_lms_compressed_string(s, suffix_array, &sl_type_array, &bucket_range);
-        println!("{:?}", red_str);
         let sa_red = SuffixArray::new(&red_str).into_suffix_array();
         let lms_vec = (0..=m)
             .filter(|i| is_lms(sl_type_array, *i))
             .collect::<Vec<_>>();
-        sa_red.into_iter().map(|i| lms_vec[i]).collect::<Vec<_>>()
+        sa_red[1..].iter().map(|i| lms_vec[*i]).collect::<Vec<_>>()
     }
 
-    pub struct SuffixArray<'a, T: Ord + Clone> {
+    pub struct SuffixArray<'a, T: Ord + Clone + std::fmt::Debug> {
         s: &'a [T],
         suffix_array: Vec<usize>,
     }
 
     impl<'a, T> SuffixArray<'a, T>
     where
-        T: Ord + Clone + std::hash::Hash,
+        T: Ord + Clone + std::fmt::Debug + std::hash::Hash,
     {
         // using SA-IS
         pub fn new(s: &'a [T]) -> Self {
@@ -262,7 +263,8 @@ mod suffix_array {
                 };
             } else if m == 1 {
                 return Self {
-                    s, suffix_array: vec![1, 0],
+                    s,
+                    suffix_array: vec![1, 0],
                 };
             }
 
@@ -390,24 +392,16 @@ mod suffix_array {
                 stype_from_ltype(s, &mut suffix_array, &sl_type_array, &bucket_range);
                 assert_eq!(suffix_array, expect_after_stype);
 
-                let right_order = get_right_order(s, &mut suffix_array, &sl_type_array, &bucket_range);
-                // suffix_array = vec![None; m + 1];
-                // assert_eq!(right_order, expect_right_lms_order);
+                let right_order =
+                    get_right_order(s, &mut suffix_array, &sl_type_array, &bucket_range);
+                suffix_array = vec![None; m + 1];
+                assert_eq!(right_order, expect_right_lms_order);
 
                 // lms_insert(s, &mut suffix_array, &bucket_range, right_order);
 
                 // ltype_from_lms(s, &mut suffix_array, &sl_type_array, &bucket_range);
                 // stype_from_ltype(s, &mut suffix_array, &sl_type_array, &bucket_range);
-
             }
-
-            let s = b"";
-            //                  S
-            let v1 = vec![Some(0)];
-            let v2 = vec![None];
-            let v3 = vec![Some(0)];
-            let v4 = vec![];
-            test(s, v1, v2, v3, v4);
 
             // let s = b"a";
             // //                  LS
@@ -420,7 +414,7 @@ mod suffix_array {
             // let v1 = vec![Some(1), None];
             // let v2 = vec![None, Some(0)];
             // let v3 = vec![Some(1), Some(0)];
-            // let v4 = vec![];
+            // let v4 = vec![1];
             // test(s, v1, v2, v3, v4);
 
             // let s = b"ba";
@@ -434,7 +428,7 @@ mod suffix_array {
             // let v1 = vec![Some(2), None, None];
             // let v2 = vec![None, Some(1), Some(0)];
             // let v3 = vec![Some(2), Some(1), Some(0)];
-            // let v4 = vec![];
+            // let v4 = vec![2];
             // test(s, v1, v2, v3, v4);
 
             // let s = b"ab";
@@ -448,7 +442,7 @@ mod suffix_array {
             // let v1 = vec![Some(2), None, None];
             // let v2 = vec![None, None, Some(1)];
             // let v3 = vec![Some(2), Some(0), Some(1)];
-            // let v4 = vec![];
+            // let v4 = vec![2];
             // test(s, v1, v2, v3, v4);
 
             // let s = b"bab";
@@ -462,7 +456,7 @@ mod suffix_array {
             // let v1 = vec![Some(3), Some(1), None, None];
             // let v2 = vec![None, None, Some(2), Some(0)];
             // let v3 = vec![Some(3), Some(1), Some(2), Some(0)];
-            // let v4 = vec![];
+            // let v4 = vec![3,1];
             // test(s, v1, v2, v3, v4);
 
             // let s = b"babba";
@@ -476,31 +470,31 @@ mod suffix_array {
             // let v1 = vec![Some(5), None, Some(1), None, None, None];
             // let v2 = vec![None, Some(4), None, Some(3), Some(0), Some(2)];
             // let v3 = vec![Some(5), Some(4), Some(1), Some(3), Some(0), Some(2)];
-            // let v4 = vec![];
+            // let v4 = vec![5,1];
             // test(s, v1, v2, v3, v4);
 
-            // let s = b"acbcaca";
-            // //                  SLSLSLLS
-            // // LMS                2 4  7
+            let s = b"acbcaca";
+            //                  SLSLSLLS
+            // LMS                2 4  7
 
-            // // $aaabccc
-            // // 7--42---
-            // // -6---531
-            // // 76402531
-            // let v1 = vec![Some(7), None, None, Some(4), Some(2), None, None, None];
-            // let v2 = vec![None, Some(6), None, None, None, Some(5), Some(3), Some(1)];
-            // let v3 = vec![
-            //     Some(7),
-            //     Some(6),
-            //     Some(4),
-            //     Some(0),
-            //     Some(2),
-            //     Some(5),
-            //     Some(3),
-            //     Some(1),
-            // ];
-            // let v4 = vec![];
-            // test(s, v1, v2, v3, v4);
+            // $aaabccc
+            // 7--42---
+            // -6---531
+            // 76402531
+            let v1 = vec![Some(7), None, None, Some(4), Some(2), None, None, None];
+            let v2 = vec![None, Some(6), None, None, None, Some(5), Some(3), Some(1)];
+            let v3 = vec![
+                Some(7),
+                Some(6),
+                Some(4),
+                Some(0),
+                Some(2),
+                Some(5),
+                Some(3),
+                Some(1),
+            ];
+            let v4 = vec![7, 4, 2];
+            test(s, v1, v2, v3, v4);
         }
         #[test]
         fn test_suffix_array() {
