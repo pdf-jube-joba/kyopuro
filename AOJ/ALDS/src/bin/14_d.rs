@@ -198,13 +198,25 @@ mod suffix_array {
                 if !is_lms(sl_type_array, suf_ind) {
                     continue;
                 }
-                let lms_end = (suf_ind + 1..=m)
+                let lms_end = {
+                    let mut lms_end = None;
+                    for i in suf_ind + 1..=m {
+                        if is_lms(sl_type_array, i) {
+                            lms_end = Some(i);
+                            break;
+                        }
+                    }
+                    match lms_end {
+                        Some(i) => i,
+                        None => m,
+                    }
+                };
+                let lms_end2 = (suf_ind + 1..=m)
                     .position(|i| {
-                        println!(" {} {} m {}", i, is_lms(sl_type_array, i), m);
                         is_lms(sl_type_array, i)
                     })
                     .unwrap_or(m);
-                println!("lms_end {}", lms_end); // ??????
+                assert_eq!(lms_end, lms_end2); // ??????
                 let lms_block =(suf_ind..lms_end).map(|i| s[i].clone()).collect();
                 dbg!(i, suf_ind, lms_end, &lms_block);
                 if lms_block != prev {
