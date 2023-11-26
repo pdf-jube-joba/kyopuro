@@ -198,18 +198,15 @@ mod suffix_array {
                 if !is_lms(sl_type_array, suf_ind) {
                     continue;
                 }
-                dbg!(i, &v);
-                let lms_block = {
-                    let lms_end = (suf_ind + 1..=m)
-                        .position(|i| is_lms(sl_type_array, i))
-                        .unwrap_or(m);
-                    assert!(lms_end <= m);
-                    if suf_ind < m {
-                        s[suf_ind..lms_end].to_vec()
-                    } else {
-                        vec![]
-                    }
-                };
+                let lms_end = (suf_ind + 1..=m)
+                    .position(|i| {
+                        println!(" {} {} m {}", i, is_lms(sl_type_array, i), m);
+                        is_lms(sl_type_array, i)
+                    })
+                    .unwrap_or(m);
+                println!("lms_end {}", lms_end); // ??????
+                let lms_block =(suf_ind..lms_end).map(|i| s[i].clone()).collect();
+                dbg!(i, suf_ind, lms_end, &lms_block);
                 if lms_block != prev {
                     count += 1;
                 }
