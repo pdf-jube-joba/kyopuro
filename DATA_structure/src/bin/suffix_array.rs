@@ -1,3 +1,44 @@
+fn main() {
+    use suffix_array::*;
+    let (t, pis) = input();
+    let suffix_array = SuffixArray::new(&t);
+    for pi in pis {
+        if suffix_array.find_substr(&pi).is_some() {
+            println!("1");
+        } else {
+            println!("0");
+        }
+    }
+}
+
+fn input() -> (Vec<u8>, Vec<Vec<u8>>) {
+    use std::io::BufRead;
+    let mut buf = String::new();
+    let stdin = std::io::stdin();
+    let mut stdin = stdin.lock();
+
+    let t = {
+        stdin.read_line(&mut buf).unwrap();
+        buf.trim().as_bytes().to_vec()
+    };
+
+    let q = {
+        buf.clear();
+        stdin.read_line(&mut buf).unwrap();
+        buf.trim().parse::<usize>().unwrap()
+    };
+
+    let pi = (0..q)
+        .map(|_| {
+            buf.clear();
+            stdin.read_line(&mut buf).unwrap();
+            buf.trim().as_bytes().to_vec()
+        })
+        .collect();
+
+    (t, pi)
+}
+
 mod suffix_array {
     use std::collections::BTreeMap;
 
@@ -211,8 +252,9 @@ mod suffix_array {
                         None => m,
                     }
                 };
+                println!("{sl_type_array:?} {suf_ind}");
                 let lms_end2 = (suf_ind + 1..=m)
-                    .position(|i| is_lms(sl_type_array, i))
+                    .find(|i| is_lms(sl_type_array, *i))
                     .unwrap_or(m);
                 assert_eq!(lms_end, lms_end2); // ??????
                 let lms_block = (suf_ind..lms_end).map(|i| s[i].clone()).collect();
@@ -223,7 +265,6 @@ mod suffix_array {
                 v.push((suf_ind, count));
                 prev = lms_block;
             }
-            println!("end");
             v
         };
 
@@ -511,46 +552,7 @@ mod suffix_array {
             let a = b"a";
             let _ = SuffixArray::new(a);
         }
+
     }
 }
 
-fn main() {
-    use suffix_array::*;
-    let (t, pis) = input();
-    let suffix_array = SuffixArray::new(&t);
-    for pi in pis {
-        if suffix_array.find_substr(&pi).is_some() {
-            println!("1");
-        } else {
-            println!("0");
-        }
-    }
-}
-
-fn input() -> (Vec<u8>, Vec<Vec<u8>>) {
-    use std::io::BufRead;
-    let mut buf = String::new();
-    let stdin = std::io::stdin();
-    let mut stdin = stdin.lock();
-
-    let t = {
-        stdin.read_line(&mut buf).unwrap();
-        buf.trim().as_bytes().to_vec()
-    };
-
-    let q = {
-        buf.clear();
-        stdin.read_line(&mut buf).unwrap();
-        buf.trim().parse::<usize>().unwrap()
-    };
-
-    let pi = (0..q)
-        .map(|_| {
-            buf.clear();
-            stdin.read_line(&mut buf).unwrap();
-            buf.trim().as_bytes().to_vec()
-        })
-        .collect();
-
-    (t, pi)
-}
