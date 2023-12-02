@@ -1,3 +1,14 @@
+fn compute_part1(str: &str) -> usize {
+    str.lines().map(|line|{
+        let v = line.chars().filter_map(|c| if c.is_ascii_digit() {
+            Some(c.to_digit(10).unwrap() as usize)
+        } else {
+            None
+        }).collect::<Vec<_>>();
+        v[0] * 10 + v[v.len() - 1]
+    }).sum()
+}
+
 fn parse_first(str: &[char]) -> Option<usize> {
     match str {
         [c, ..] if c.is_ascii_digit() => Some(c.to_digit(10).unwrap() as usize),
@@ -14,7 +25,7 @@ fn parse_first(str: &[char]) -> Option<usize> {
     }
 }
 
-fn compute(str: &str) -> usize {
+fn compute_part2(str: &str) -> usize {
     str.lines()
         .map(|line| {
             let chars: Vec<_> = line.chars().collect();
@@ -44,7 +55,7 @@ fn compute(str: &str) -> usize {
 
 fn main() {
     let content = input();
-    let sum = compute(&content);
+    let sum = compute_part1(&content);
     println!("{sum}");
 }
 
@@ -55,6 +66,15 @@ fn input() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn example_test_part1() {
+        let str = "1abc2
+        pqr3stu8vwx
+        a1b2c3d4e5f
+        treb7uchet";
+        let sum = compute_part1(str);
+        assert_eq!(sum, 142);
+    }
     #[test]
     fn parse_test() {
         assert_eq!(parse_first(&"".chars().collect::<Vec<_>>()), None);
@@ -82,22 +102,22 @@ mod tests {
     #[test]
     fn compute_test() {
         let str = "12";
-        assert_eq!(compute(str), 12);
+        assert_eq!(compute_part2(str), 12);
         let str = "1234";
-        assert_eq!(compute(str), 14);
+        assert_eq!(compute_part2(str), 14);
         let str = "1";
-        assert_eq!(compute(str), 11);
+        assert_eq!(compute_part2(str), 11);
         let str = "onetwo";
-        assert_eq!(compute(str), 12);
+        assert_eq!(compute_part2(str), 12);
         let str = "one2three4";
-        assert_eq!(compute(str), 14);
+        assert_eq!(compute_part2(str), 14);
         let str = "twone";
-        assert_eq!(compute(str), 21);
+        assert_eq!(compute_part2(str), 21);
         let str = "one";
-        assert_eq!(compute(str), 11);
+        assert_eq!(compute_part2(str), 11);
     }
     #[test]
-    fn example_test() {
+    fn example_test_part2() {
         let str = "two1nine
         eightwothree
         abcone2threexyz
@@ -105,6 +125,6 @@ mod tests {
         4nineeightseven2
         zoneight234
         7pqrstsixteen";
-        assert_eq!(compute(str), 281);
+        assert_eq!(compute_part2(str), 281);
     }
 }
