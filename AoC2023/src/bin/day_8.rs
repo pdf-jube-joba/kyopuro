@@ -1,136 +1,46 @@
 use crate::nums::*;
 
-fn compute_part1(input: &(Vec<Move>, Vec<(OneNode, OneNode, OneNode)>)) -> usize {
-    let mut nodes_network = input.1.to_owned();
-    nodes_network.sort();
-
-    let mut now = OneNode::new("AAA".to_owned());
-    let goal = OneNode::new("ZZZ".to_owned());
-
-    for (i, move_lr) in input.0.iter().cycle().enumerate() {
-        if now == goal {
-            return i;
+fn step_num(
+    moves: &Vec<Move>,
+    sorted_maps: &Vec<(OneNode, OneNode, OneNode)>,
+    mut now: OneNode,
+    is_goal: impl Fn(&OneNode) -> bool,
+) -> usize {
+    for (step, move_lr) in moves.iter().cycle().enumerate() {
+        if is_goal(&now) {
+            return step;
         }
-        let i = nodes_network
+        let i = sorted_maps
             .binary_search_by(|(node_name, _, _)| node_name.cmp(&now))
             .unwrap(); // ok?
-        let (l, r) = (nodes_network[i].1.clone(), nodes_network[i].2.clone());
         now = match move_lr {
-            Move::L => l,
-            Move::R => r,
+            Move::L => sorted_maps[i].1.clone(),
+            Move::R => sorted_maps[i].2.clone(),
         };
     }
     unreachable!()
 }
 
-fn compute_part2(input: &(Vec<Move>, Vec<(OneNode, OneNode, OneNode)>)) -> usize {
-    let mut nodes_network = input.1.to_owned();
-    nodes_network.sort();
-    let mut periods: Vec<usize> = vec![];
-    let mut nows = nodes_network
-        .iter()
-        .filter_map(|(node, _, _)| {
-            if node.is_start() {
-                Some(node.clone())
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-    let mut nexts = vec![];
-    for (i, move_lr) in input.0.iter().cycle().enumerate() {
-        if nows.is_empty() {
-            break;
-        }
-        for now in nows {
-            if now.is_end() {
-                periods.push(i);
-                continue;
-            }
+fn compute_part1(moves: Vec<Move>, mut maps: Vec<(OneNode, OneNode, OneNode)>) -> usize {
+    maps.sort_by_key(|(node, _, _)| node.clone());
+    step_num(&moves, &maps, OneNode::start(), |node| node.is_end())
+}
 
-            let i = nodes_network
-                .binary_search_by(|(node_name, _, _)| node_name.cmp(&now))
-                .unwrap(); // ok?
-            let (l, r) = (nodes_network[i].1.clone(), nodes_network[i].2.clone());
-            let next = match move_lr {
-                Move::L => l,
-                Move::R => r,
-            };
-            nexts.push(next);
-        }
-        nows = nexts;
-        nexts = vec![];
-    }
-    lcms(periods)
+fn compute_part2(moves: Vec<Move>, mut maps: Vec<(OneNode, OneNode, OneNode)>) -> usize {
+    maps.sort_by_key(|(node, _, _)| node.clone());
+    maps.iter()
+        .filter(|(node, _, _)| node.is_start_with_a())
+        .map(|(node, _, _)| node)
+        .cloned()
+        .map(|start_node| step_num(&moves, &maps, start_node, |node| node.is_end_with_z()))
+        .reduce(lcm)
+        .unwrap()
 }
 
 fn main() {
     let input = input();
-    println!("{}", compute_part1(&input));
-    println!("{}", compute_part2(&input));
-}
-
-mod nums {
-    pub fn lcms(mut a: Vec<usize>) -> usize {
-        if a.is_empty() {
-            panic!();
-        }
-        loop {
-            if a.len() == 1 {
-                return a[0];
-            }
-            let lcm_two = lcm(a.pop().unwrap(), a.pop().unwrap());
-            a.push(lcm_two);
-        }
-    }
-    fn lcm(mut a: usize, mut b: usize) -> usize {
-        if gcd(a, b) == 0 {
-            0
-        } else {
-            (a * b) / gcd(a, b)
-        }
-    }
-    fn gcd(mut a: usize, mut b: usize) -> usize {
-        if a > b {
-            gcd(b, a)
-        // a <= b ?
-        } else if a == 0 {
-            0
-        } else if b % a == 0 {
-            a
-        } else {
-            gcd(b % a, a)
-        }
-    }
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        #[test]
-        fn gcd_test() {
-            assert_eq!(gcd(1, 1), 1);
-            assert_eq!(gcd(2, 3), 1);
-            assert_eq!(gcd(3, 2), 1);
-            assert_eq!(gcd(2, 2), 2);
-            assert_eq!(gcd(4, 6), 2);
-        }
-        #[test]
-        fn lcm_test() {
-            assert_eq!(lcm(1, 1), 1);
-            assert_eq!(lcm(2, 3), 6);
-            assert_eq!(lcm(3, 2), 6);
-            assert_eq!(lcm(2, 2), 2);
-            assert_eq!(lcm(4, 6), 12);
-            assert_eq!(lcms(vec![1, 1]), 1);
-            assert_eq!(lcms(vec![2, 4, 6]), 12);
-            assert_eq!(lcms(vec![3, 5, 7]), 3 * 5 * 7);
-            assert_eq!(lcm(2 * 3, 2 * 3 * 3), 2 * 3 * 3);
-            assert_eq!(lcm(2 * 5, 2 * 3 * 3 * 7), 2 * 3 * 3 * 5 * 7);
-            assert_eq!(
-                lcms(vec![2 * 3, 2 * 5, 2 * 7, 2 * 3 * 3]),
-                2 * 3 * 3 * 5 * 7
-            );
-        }
-    }
+    println!("{}", compute_part1(input.0.clone(), input.1.clone()));
+    println!("{}", compute_part2(input.0.clone(), input.1.clone()));
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -151,11 +61,17 @@ impl OneNode {
             .all(|char| char.is_ascii_alphabetic() && char.is_uppercase()));
         Self(str)
     }
-    fn is_start(&self) -> bool {
+    fn is_start_with_a(&self) -> bool {
         self.0.ends_with('A')
     }
-    fn is_end(&self) -> bool {
+    fn is_end_with_z(&self) -> bool {
         self.0.ends_with('Z')
+    }
+    fn start() -> Self {
+        OneNode("AAA".to_owned())
+    }
+    fn is_end(&self) -> bool {
+        *self == OneNode("ZZZ".to_owned())
     }
 }
 
@@ -195,12 +111,54 @@ fn input() -> (Vec<Move>, Vec<(OneNode, OneNode, OneNode)>) {
     (moves, node_infos)
 }
 
+mod nums {
+    pub fn lcm(mut a: usize, mut b: usize) -> usize {
+        if gcd(a, b) == 0 {
+            0
+        } else {
+            (a * b) / gcd(a, b)
+        }
+    }
+    fn gcd(mut a: usize, mut b: usize) -> usize {
+        if a > b {
+            gcd(b, a)
+        // a <= b ?
+        } else if a == 0 {
+            0
+        } else if b % a == 0 {
+            a
+        } else {
+            gcd(b % a, a)
+        }
+    }
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        #[test]
+        fn gcd_test() {
+            assert_eq!(gcd(1, 1), 1);
+            assert_eq!(gcd(2, 3), 1);
+            assert_eq!(gcd(3, 2), 1);
+            assert_eq!(gcd(2, 2), 2);
+            assert_eq!(gcd(4, 6), 2);
+        }
+        #[test]
+        fn lcm_test() {
+            assert_eq!(lcm(1, 1), 1);
+            assert_eq!(lcm(2, 3), 6);
+            assert_eq!(lcm(3, 2), 6);
+            assert_eq!(lcm(2, 2), 2);
+            assert_eq!(lcm(4, 6), 12);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
     fn find_test() {
-        let a = (
+        let mut a = (
             vec![Move::R, Move::L],
             vec![
                 ("AAA", "BBB", "CCC"),
@@ -216,11 +174,11 @@ mod tests {
                 (
                     OneNode::new(v0.to_owned()),
                     OneNode::new(v1.to_owned()),
-                    OneNode::new(v1.to_owned()),
+                    OneNode::new(v2.to_owned()),
                 )
             })
             .collect::<Vec<_>>(),
         );
-        assert_eq!(compute_part1(&a), 2)
+        assert_eq!(compute_part1(a.0, a.1), 2);
     }
 }
