@@ -2,21 +2,21 @@ use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet, VecDeque},
     ops::Neg,
-    str::FromStr,
 };
 
 fn main() {
     let pipes = input();
-    println!("{}", compute_part1(&pipes));
+    // println!("{}", compute_part1(&pipes));
     println!("{}", compute_part2(&pipes));
 }
 
 fn compute_part1(pipes: &Vec<Vec<Option<PipeInput>>>) -> usize {
     let map = PipeMap::from_vec(pipes.clone());
-    let path = map.get_path();
+    let path = map.get_loop();
     path.len() / 2
 }
 
+#[derive(Debug, Clone, PartialEq)]
 struct PipeMap {
     start: (usize, usize),
     map: HashMap<(usize, usize), PipeInput>,
@@ -32,11 +32,11 @@ impl PipeMap {
         let mut start = (0, 0);
         for i in 0..height {
             for j in 0..width {
-                if let Some(pipe) = v[i][j] {
-                    if pipe == PipeInput::Special {
+                if let Some(pipe) = &v[i][j] {
+                    if *pipe == PipeInput::Special {
                         start = (i, j);
                     }
-                    map.insert((i, j), pipe);
+                    map.insert((i, j), pipe.clone());
                 }
             }
         }
@@ -78,13 +78,13 @@ impl PipeMap {
             let mut now = map.checked_next_index(map.start, &start_direction)?;
             let mut from_direction = start_direction;
             loop {
-                res.push(now);
                 let pipe = map.get(&now)?;
                 match pipe {
                     PipeInput::Special => {
                         break;
                     }
                     _ => {
+                        res.push(now);
                         let next_direction = pipe.next_direction(&from_direction)?;
                         let next_index: (usize, usize) =
                             map.checked_next_index(now, &next_direction)?;
@@ -107,7 +107,9 @@ impl PipeMap {
 // struct of nice oriented path
 // - path: all of points in vec is adjoin each other
 // - pts is never return (i.e. there is no subseq such that ... pt1, pt2, pt1)
+// - path is not self-intersection
 // => move of path can be represent as vec of PipeInput struct
+#[derive(Debug, Clone, PartialEq)]
 struct PathNonDeg {
     path: Vec<(usize, usize)>,
     pipes: Vec<PipeInput>,
@@ -118,13 +120,13 @@ impl PathNonDeg {
         assert!(
             path.windows(2)
                 // |(x0, x1) - (y0, y1) |_{Manhattan} = 1 <=> get_dir is some
-                .all(|pts| get_dir_from_index(pts[0], pts[1]).is_some())
+                .all(|pts| get_dir(pts[0], pts[1]).is_some())
                 && path.windows(3).all(|pts| pts[0] != pts[2])
         );
         let mut pipes = vec![PipeInput::Special];
         pipes.extend(path.windows(3).map(|pts| {
-            let dir1 = get_dir_from_index(pts[0], pts[1]).unwrap();
-            let dir2 = get_dir_from_index(pts[1], pts[2]).unwrap();
+            let dir1 = get_dir(pts[0], pts[1]).unwrap();
+            let dir2 = get_dir(pts[1], pts[2]).unwrap();
             match (dir1.neg(), dir2) {
                 (Direction::N, Direction::S) | (Direction::S, Direction::N) => PipeInput::NS,
                 (Direction::N, Direction::E) | (Direction::E, Direction::N) => PipeInput::NE,
@@ -147,12 +149,12 @@ impl PathNonDeg {
         let come_from = if now_ind == 0 {
             None
         } else {
-            Some(get_dir_from_index(self.path[now_ind - 1], self.path[now_ind]).unwrap())
+            Some(get_dir(self.path[now_ind - 1], self.path[now_ind]).unwrap())
         };
         let go_to = if now_ind == self.path.len() - 1 {
             None
         } else {
-            Some(get_dir_from_index(self.path[now_ind], self.path[now_ind + 1]).unwrap())
+            Some(get_dir(self.path[now_ind], self.path[now_ind + 1]).unwrap())
         };
         Some((come_from, go_to))
     }
@@ -162,13 +164,30 @@ impl PathNonDeg {
             .find(|pt_inthis| pt == **pt_inthis)
             .is_some()
     }
+    fn get_line(pt1: (usize, usize), pt2: (usize, usize)) -> Self {
+        let mut v = vec![];
+        if pt1.0 < pt2.0 {
+            v.extend((pt1.0..pt2.0).map(|i| (i, pt1.1)));
+        } else if pt2.0 < pt1.0 {
+            v.extend((pt2.0 + 1..=pt1.0).rev().map(|i| (i, pt1.1)));
+        }
+        if pt1.1 < pt2.1 {
+            v.extend((pt1.1..pt2.1).map(|i| (pt2.0, i)));
+        } else if pt2.1 < pt1.1 {
+            v.extend((pt2.1 + 1..=pt1.1).rev().map(|i| (pt2.0, i)));
+        }
+        v.push(pt2);
+        PathNonDeg::new(v)
+    }
 }
 
 // struct of nice oriented loop
 // - loop: all of points in vec is adjoin each other
 // - pts is never return (i.e. there is no subseq such that ... pt1, pt2, pt1) as loop
-// - so len should greater then 2
+//  - so len should greater then 2
+// - loop is not self-intersection
 // => move of path can be represent as vec of PipeInput struct
+#[derive(Debug, Clone, PartialEq)]
 struct Loop {
     path: Vec<(usize, usize)>,
     pipes: Vec<PipeInput>,
@@ -179,15 +198,15 @@ impl Loop {
         assert!(
             path.windows(2)
                 // |(x0, x1) - (y0, y1) |_{Manhattan} = 1
-                .all(|pts| get_dir_from_index(pts[0], pts[1]).is_some())
-                && get_dir_from_index(path[path.len() - 1], path[0]).is_some()
+                .all(|pts| get_dir(pts[0], pts[1]).is_some())
+                && get_dir(path[path.len() - 1], path[0]).is_some()
                 && path.windows(3).all(|pts| pts[0] != pts[2])
                 && path.len() > 2
         );
 
         let mut pipes = vec![{
-            let dir1 = get_dir_from_index(path[path.len() - 1], path[0]).unwrap();
-            let dir2 = get_dir_from_index(path[0], path[1]).unwrap();
+            let dir1 = get_dir(path[path.len() - 1], path[0]).unwrap();
+            let dir2 = get_dir(path[0], path[1]).unwrap();
             match (dir1.neg(), dir2) {
                 (Direction::N, Direction::S) | (Direction::S, Direction::N) => PipeInput::NS,
                 (Direction::N, Direction::E) | (Direction::E, Direction::N) => PipeInput::NE,
@@ -199,8 +218,8 @@ impl Loop {
             }
         }];
         pipes.extend(path.windows(3).map(|pts| {
-            let dir1 = get_dir_from_index(pts[0], pts[1]).unwrap();
-            let dir2 = get_dir_from_index(pts[1], pts[2]).unwrap();
+            let dir1 = get_dir(pts[0], pts[1]).unwrap();
+            let dir2 = get_dir(pts[1], pts[2]).unwrap();
             match (dir1.neg(), dir2) {
                 (Direction::N, Direction::S) | (Direction::S, Direction::N) => PipeInput::NS,
                 (Direction::N, Direction::E) | (Direction::E, Direction::N) => PipeInput::NE,
@@ -223,14 +242,14 @@ impl Loop {
     fn dir_pipe_of_pt(&self, pt: (usize, usize)) -> Option<(Direction, Direction)> {
         let now_ind = self.path.iter().position(|pt_this| *pt_this == pt)?;
         let come_from = if now_ind == 0 {
-            get_dir_from_index(self.path[self.path.len() - 1], self.path[0]).unwrap()
+            get_dir(self.path[self.path.len() - 1], self.path[0]).unwrap()
         } else {
-            get_dir_from_index(self.path[now_ind - 1], self.path[now_ind]).unwrap()
+            get_dir(self.path[now_ind - 1], self.path[now_ind]).unwrap()
         };
         let go_to = if now_ind == self.path.len() - 1 {
-            get_dir_from_index(self.path[self.path.len() - 1], self.path[0]).unwrap()
+            get_dir(self.path[self.path.len() - 1], self.path[0]).unwrap()
         } else {
-            get_dir_from_index(self.path[now_ind], self.path[now_ind + 1]).unwrap()
+            get_dir(self.path[now_ind], self.path[now_ind + 1]).unwrap()
         };
         Some((come_from, go_to))
     }
@@ -245,8 +264,8 @@ impl Loop {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 enum Intersection {
-    No,
     FromRight,
     FromLeft,
     AcrossRightToLeft,
@@ -255,32 +274,91 @@ enum Intersection {
     TouchLeft,
     GoLeft,
     GoRight,
-    Continue,
+    Forward,
+    Reverse,
 }
 
-fn dir_intersection(dir1: (Direction, Direction), dir2: (Direction, Direction)) -> Intersection {
-    match (dir1, dir2) {
-        ((d11, d12), (d21, d22)) if d11 == d21 && d12 == d22 => Intersection::Continue,
-        ((d11, d12), (d21, d22)) if d11 == d21 => {
-            let d12 = d11.neg().rotate(d12);
-            let d22 = d21.neg().rotate(d22);
-            if d22 < d12 {
-                Intersection::GoRight
-            } else {
-                Intersection::GoLeft
-            }
+fn dir_intersection(
+    (d11, d12): (Direction, Direction),
+    (d21, d22): (Direction, Direction),
+) -> Intersection {
+    if d11 == d21 && d12 == d22  {
+        // forward run
+        // ↑↑
+        // ↑↑
+        Intersection::Forward
+    } else if d11 == d22.neg() && d12 == d21.neg() {
+        // reverse run
+        // ↑↓
+        // ↑↓
+        Intersection::Reverse
+    } else if d11 == d21 {
+        let d = d11.neg();
+        // from are same direction
+        // ↑→
+        // ↑↑  d=↑
+        let d12 = d.neg().rotate(d12);
+        let d22 = d.neg().rotate(d22);
+        if d22 < d12 {
+            Intersection::GoRight
+        } else {
+            Intersection::GoLeft
         }
-        ((d11, d12), (d21, d22)) if d12 == d22 => {
-            let d11 = d12.rotate(d11.neg());
-            let d21 = d22.rotate(d21.neg());
-            if d21 < d11 {
-                Intersection::FromRight
-            } else {
-                Intersection::FromLeft
-            }
+    } else if d12 == d21.neg() {
+        let d = d12;
+        // reversely run and leave 
+        // ↑↓
+        // ↑→  d=↑
+        let d11 = d.rotate(d11.neg());
+        let d22 = d.rotate(d22);
+        if d22 < d11 {
+            Intersection::GoRight
+        } else {
+            Intersection::GoLeft
         }
-
-        _ => unimplemented!(),
+    } else if d12 == d22 {
+        let d = d12;
+        // to are same direction
+        // ↑↑
+        // ↑←  d=↑
+        let d11 = d.rotate(d11.neg());
+        let d21 = d.rotate(d21.neg());
+        if d21 < d11 {
+            Intersection::FromRight
+        } else {
+            Intersection::FromLeft
+        }
+    } else if d11 == d22.neg() {
+        let d = d22;
+        // come in and reversely run
+        // ↑←
+        // ↑↓  d=↓
+        let d11 = d.rotate(d12);
+        let d22 = d.rotate(d21.neg());
+        if d11 < d22 {
+            Intersection::FromRight
+        } else {
+            Intersection::FromLeft
+        }
+    } else if d11 == d12 && d21 == d22 {
+        // across in one point
+        // ↑  ←←
+        // ↑  
+        match d11.rotate(d12) {
+            Direction::E => Intersection::AcrossLeftToRight,
+            Direction::W => Intersection::AcrossRightToLeft,
+            _ => unreachable!("not in case")
+        }
+    } else {
+        // touch in one point
+        // ← ↑    ← ↓
+        // ↑ ← or ↑ →
+        assert!((d11 == d22 && d12 == d21) || (d11 == d21.neg() && d12 == d22.neg()));
+        match d11.neg().rotate(d12) {
+            Direction::E => Intersection::TouchLeft,
+            Direction::W => Intersection::TouchRight,
+            _ => unreachable!()
+        }
     }
 }
 
@@ -290,50 +368,130 @@ fn count_across(loop_path: &Loop, path: &PathNonDeg) -> usize {
             && !loop_path.contains(*path.path.last().unwrap())
     );
     let mut count = 0;
-    let mut prev: Option<(D, (usize, usize))> = None;
-    for pt in &path.path[1..path.path.len() - 1] {
-        let Some((loop_come, loop_go)) = loop_path.dir_pipe_of_pt(*pt)else {
-            continue;
+    let mut stack: Vec<Intersection> = path.path[1..path.path.len() - 1]
+        .iter()
+        .filter_map(|pt| {
+            let Some((loop_come, loop_go)) = loop_path.dir_pipe_of_pt(*pt) else {
+            return None;
         };
 
-        let (Some(path_come), Some(path_go)) = path.dir_pipe_of_pt(*pt).unwrap() else {
+            let (Some(path_come), Some(path_go)) = path.dir_pipe_of_pt(*pt).unwrap() else {
             unreachable!()
         };
+            Some(dir_intersection((loop_come, loop_go), (path_come, path_go)))
+        })
+        .collect();
+    println!("{stack:?}");
+    while let Some(p) = stack.pop() {
+        match p {
+            Intersection::AcrossLeftToRight | Intersection::AcrossRightToLeft => {
+                count += 1
+            }
+            Intersection::GoRight => {
+                loop {
+                    let p = stack.pop().unwrap();
+                    if p != Intersection::Forward {
+                        match p {
+                            Intersection::FromLeft => {
+                                count += 1;
+                            }
+                            Intersection::FromRight => {}
+                            _ => unreachable!("stack should be start with fromX, Forward,...,Forward, GoR")
+                        }
+                        break;
+                    }
+                }
+            }
+            Intersection::GoLeft => {
+                loop {
+                    let p = stack.pop().unwrap();
+                    if p != Intersection::Forward {
+                        match p {
+                            Intersection::FromRight => {
+                                count += 1;
+                            }
+                            Intersection::FromLeft => {}
+                            _ => unreachable!("stack should be start with fromX, Forward,...,Forward, GoL")
+                        }
+                        break;
+                    }
+                }
+            }
+            Intersection::FromRight => {
+                loop {
+                    let p = stack.pop().unwrap();
+                    if p != Intersection::Reverse {
+                        match p {
+                            Intersection::GoLeft => {
+                                count += 1;
+                            }
+                            Intersection::GoRight => {}
+                            _ => unreachable!("stack should be start with fromX, Forward,...,Forward, GoR")
+                        }
+                        break;
+                    }
+                }
+            }
+            Intersection::FromLeft => {
+                loop {
+                    let p = stack.pop().unwrap();
+                    if p != Intersection::Reverse {
+                        match p {
+                            Intersection::GoRight => {
+                                count += 1;
+                            }
+                            Intersection::GoLeft => {}
+                            _ => unreachable!("stack should be start with fromX, Forward,...,Forward, GoR")
+                        }
+                        break;
+                    }
+                }
+            }
+            Intersection::TouchLeft | Intersection::TouchRight => {}
+            Intersection::Forward | Intersection::Reverse => unreachable!()
+        }
     }
-    todo!()
+    count
 }
 
 fn compute_part2(pipes: &Vec<Vec<Option<PipeInput>>>) -> usize {
     let map = PipeMap::from_vec(pipes.clone());
     let loop_in_map = map.get_loop();
-    let mut now = find_start(pipes);
-    let mut sorted_path: Vec<(usize, usize)> = path
-        .into_iter()
-        .map(|direction| {
-            now = next_index(pipes, now, &direction).unwrap();
-            now.clone()
-        })
-        .collect::<Vec<_>>();
-
-    sorted_path.sort();
-
-    let h = pipes.len();
-    let w = pipes[0].len();
+    let h = map.height();
+    let w = map.width();
 
     let mut components: Vec<HashSet<(usize, usize)>> = vec![];
 
     for i in 0..h {
         for j in 0..w {
-            if components.iter().all(|set| !set.contains(&(i, j))) {
-                let component_of_this = connected_component(h, w, &sorted_path, (i, j));
-                if !component_of_this.is_empty() {
-                    components.push(component_of_this);
-                }
+            if loop_in_map.contains((i, j)) || components.iter().any(|set| set.contains(&(i, j))) {
+                continue;
+            }
+            // pt in new connected component
+            let component_of_this = connected_component_of_pt((h, w), &loop_in_map, (i, j));
+            if !component_of_this.is_empty() {
+                println!("{:?}", component_of_this);
+                components.push(component_of_this);
             }
         }
     }
 
     println!("{components:?}");
+
+    let out_pt = {
+        let mut pt = (0, 0);
+        for i in 0..h {
+            for j in 0..w {
+                if !loop_in_map.contains((i, j)) {
+                    pt = (i, j);
+                    break;
+                }
+            }
+        }
+        pt
+    };
+
+    println!("{out_pt:?}");
 
     components
         .into_iter()
@@ -342,8 +500,8 @@ fn compute_part2(pipes: &Vec<Vec<Option<PipeInput>>>) -> usize {
                 let set: Vec<(usize, usize)> = Vec::from_iter(set.clone());
                 set[0]
             };
-            let path_to_outside = get_path_to_outside(h, w, &sorted_path, pt_in_set);
-            let count = count_across(&sorted_path, &path_to_outside);
+            let path_to_outside = PathNonDeg::get_line(out_pt, pt_in_set);
+            let count = count_across(&loop_in_map, &path_to_outside);
             count % 2 == 0
         })
         .map(|set| set.len())
@@ -369,7 +527,6 @@ fn connected_component_of_pt(
     let mut area: HashSet<(usize, usize)> = HashSet::new();
 
     while let Some(next) = queue.pop_front() {
-        // println!("{next:?}");
         if sorted.binary_search(&next).is_ok() {
             continue;
         }
@@ -402,43 +559,21 @@ fn connected_component_of_pt(
     area
 }
 
-fn get_dir_from_index(from: (usize, usize), to: (usize, usize)) -> Option<Direction> {
+fn get_dir(from: (usize, usize), to: (usize, usize)) -> Option<Direction> {
     if from.0 == to.0 + 1 && from.1 == to.1 {
         Some(Direction::N)
-    } else if from.0 + 1 == to.0 - 1 && from.1 == to.1 {
+    } else if from.0 + 1 == to.0 && from.1 == to.1 {
         Some(Direction::S)
     } else if from.0 == to.0 && from.1 == to.1 + 1 {
         Some(Direction::W)
-    } else if from.0 == to.0 && from.1 == to.1 - 1 {
+    } else if from.0 == to.0 && from.1 + 1 == to.1 {
         Some(Direction::E)
     } else {
         None
     }
 }
 
-fn get_path_to_outside(
-    h: usize,
-    w: usize,
-    sorted_path: &Vec<(usize, usize)>,
-    pt: (usize, usize),
-) -> Vec<(usize, usize)> {
-    let outside_pt = look_outside(h, w, sorted_path);
-    let mut v = vec![];
-    if outside_pt.0 < pt.0 {
-        v.extend((outside_pt.0..=pt.0).map(|i| (i, outside_pt.1)));
-    } else {
-        v.extend((pt.0..=outside_pt.0).rev().map(|i| (i, outside_pt.1)));
-    }
-    if outside_pt.1 < pt.1 {
-        v.extend((outside_pt.1..=pt.1).map(|i| (pt.0, i)));
-    } else {
-        v.extend((pt.1..=outside_pt.1).rev().map(|i| (pt.0, i)));
-    }
-    println!("{v:?}");
-    v
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 enum Direction {
     N,
     E,
@@ -449,7 +584,7 @@ enum Direction {
 impl Direction {
     // Orientation of the other when the coordinates are rotated so that self is north.
     fn rotate(self, other: Direction) -> Direction {
-        match (self, other) {
+        match (&self, &other) {
             (Direction::N, _) => other,
 
             (Direction::E, Direction::N) => Direction::W,
@@ -653,13 +788,15 @@ mod tests {
             (3, 1),
             (2, 1),
         ];
-        path.sort();
+
+        let map = Loop::new(path);
+
         let v: HashSet<(usize, usize)> =
-            HashSet::from_iter(connected_component(5, 5, &path, (2, 2)));
+            HashSet::from_iter(connected_component_of_pt((5, 5), &map, (2, 2)));
         assert_eq!(v, HashSet::from_iter(vec![(2, 2)]));
 
         let v: HashSet<(usize, usize)> =
-            HashSet::from_iter(connected_component(5, 5, &path, (0, 0)));
+            HashSet::from_iter(connected_component_of_pt((5, 5), &map, (0, 0)));
         assert_eq!(
             v,
             HashSet::from_iter(vec![
@@ -681,5 +818,25 @@ mod tests {
                 (1, 0),
             ])
         );
+    }
+    #[test]
+    fn get_dir_test() {
+        assert_eq!(get_dir((0, 0), (0, 0)), None);
+        assert_eq!(get_dir((0, 0), (1, 0)), Some(Direction::S));
+        assert_eq!(get_dir((1, 0), (0, 0)), Some(Direction::N));
+        assert_eq!(get_dir((0, 0), (0, 1)), Some(Direction::E));
+        assert_eq!(get_dir((0, 1), (0, 0)), Some(Direction::W));
+    }
+    #[test]
+    fn get_line() {
+        let v = vec![(0, 0), (0, 2), (2, 2), (2, 0)];
+        for pt1 in &v {
+            for pt2 in &v {
+                if pt1 != pt2 {
+                    let p = PathNonDeg::get_line(pt1.clone(), pt2.clone());
+                    println!("{p:?}");
+                }
+            }
+        }
     }
 }
