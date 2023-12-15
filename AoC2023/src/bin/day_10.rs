@@ -208,23 +208,18 @@ enum D {
     R,L,
 }
 
+// path[0] and path[path.len() - 1] is not in loop_path
 fn count_across(loop_path: &Vec<(usize, usize)>, path: &Vec<(usize, usize)>) -> usize {
     let mut count = 0;
-    let mut prev: Option<(D, (usize, usize))> = None;
-    for p in path {
+    let mut prev_dir: Option<D> = None;
+    let mut prev_ind: (usize, usize) = path[0]; 
+    for p in path.iter().skip(1) {
         if loop_path.contains(p) {
-            if let Some((d, _)) = prev {
-                prev = Some((d, *p));
-            } else {
-                let loop_prev_index = {
-                    let i = loop_path.iter().position(|pt| *pt == *p).unwrap();
-                    if i > 0 {
-                        i - 1
-                    } else {
-                        loop_path.len() - 1
-                    }
-                };
+            if prev_dir.is_none() {
+                let dir_path = get_dir_from_index(prev_ind, *p).unwrap();
+                
             }
+            prev_ind = *p;
         }
     }
     todo!()
