@@ -183,10 +183,11 @@ impl PathNonDeg {
 
 // struct of nice oriented loop
 // - loop: all of points in vec is adjoin each other
+// - start and end should coincide
 // - pts is never return (i.e. there is no subseq such that ... pt1, pt2, pt1) as loop
 //  - so len should greater then 2
 // - loop is not self-intersection
-// => move of path can be represent as vec of PipeInput struct
+// => move of path can be represented as vec of PipeInput struct
 #[derive(Debug, Clone, PartialEq)]
 struct Loop {
     path: Vec<(usize, usize)>,
@@ -194,15 +195,18 @@ struct Loop {
 }
 
 impl Loop {
+    // start and end should coincide
     fn new(path: Vec<(usize, usize)>) -> Self {
         assert!(
             path.windows(2)
                 // |(x0, x1) - (y0, y1) |_{Manhattan} = 1
                 .all(|pts| get_dir(pts[0], pts[1]).is_some())
-                && get_dir(path[path.len() - 1], path[0]).is_some()
                 && path.windows(3).all(|pts| pts[0] != pts[2])
                 && path.len() > 2
+                && path.first() == path.last()
         );
+
+        let path = path[..path.len() - 1].to_vec();
 
         let mut pipes = vec![{
             let dir1 = get_dir(path[path.len() - 1], path[0]).unwrap();
@@ -230,10 +234,7 @@ impl Loop {
                 _ => unreachable!(),
             }
         }));
-        Self {
-            path: path[..path.len() - 1].to_vec(),
-            pipes,
-        }
+        Self { path, pipes }
     }
     fn as_pipe(&self) -> &[PipeInput] {
         &self.pipes
@@ -242,12 +243,12 @@ impl Loop {
     fn dir_pipe_of_pt(&self, pt: (usize, usize)) -> Option<(Direction, Direction)> {
         let now_ind = self.path.iter().position(|pt_this| *pt_this == pt)?;
         let come_from = if now_ind == 0 {
-            get_dir(self.path[self.path.len() - 1], self.path[0]).unwrap()
+            get_dir(self.path[self.path.len() - 1], self.path[now_ind]).unwrap()
         } else {
             get_dir(self.path[now_ind - 1], self.path[now_ind]).unwrap()
         };
         let go_to = if now_ind == self.path.len() - 1 {
-            get_dir(self.path[self.path.len() - 1], self.path[0]).unwrap()
+            get_dir(self.path[now_ind], self.path[0]).unwrap()
         } else {
             get_dir(self.path[now_ind], self.path[now_ind + 1]).unwrap()
         };
@@ -282,7 +283,7 @@ fn dir_intersection(
     (d11, d12): (Direction, Direction),
     (d21, d22): (Direction, Direction),
 ) -> Intersection {
-    if d11 == d21 && d12 == d22  {
+    if d11 == d21 && d12 == d22 {
         // forward run
         // ↑↑
         // ↑↑
@@ -297,21 +298,21 @@ fn dir_intersection(
         // from are same direction
         // ↑→
         // ↑↑  d=↑
-        let d12 = d.neg().rotate(d12);
-        let d22 = d.neg().rotate(d22);
-        if d22 < d12 {
+        let d12 = d.rotate(d12);
+        let d22 = d.rotate(d22);
+        if d12 < d22 {
             Intersection::GoRight
         } else {
             Intersection::GoLeft
         }
     } else if d12 == d21.neg() {
-        let d = d12;
-        // reversely run and leave 
+        let d = d21;
+        // reversely run and leave
         // ↑↓
         // ↑→  d=↑
-        let d11 = d.rotate(d11.neg());
+        let d11 = d.rotate(d11);
         let d22 = d.rotate(d22);
-        if d22 < d11 {
+        if d11 < d22 {
             Intersection::GoRight
         } else {
             Intersection::GoLeft
@@ -343,11 +344,11 @@ fn dir_intersection(
     } else if d11 == d12 && d21 == d22 {
         // across in one point
         // ↑  ←←
-        // ↑  
-        match d11.rotate(d12) {
+        // ↑
+        match d11.rotate(d21) {
             Direction::E => Intersection::AcrossLeftToRight,
             Direction::W => Intersection::AcrossRightToLeft,
-            _ => unreachable!("not in case")
+            _ => unreachable!("not in case"),
         }
     } else {
         // touch in one point
@@ -355,9 +356,9 @@ fn dir_intersection(
         // ↑ ← or ↑ →
         assert!((d11 == d22 && d12 == d21) || (d11 == d21.neg() && d12 == d22.neg()));
         match d11.neg().rotate(d12) {
-            Direction::E => Intersection::TouchLeft,
-            Direction::W => Intersection::TouchRight,
-            _ => unreachable!()
+            Direction::E => Intersection::TouchRight,
+            Direction::W => Intersection::TouchLeft,
+            _ => unreachable!(),
         }
     }
 }
@@ -371,84 +372,84 @@ fn count_across(loop_path: &Loop, path: &PathNonDeg) -> usize {
     let mut stack: Vec<Intersection> = path.path[1..path.path.len() - 1]
         .iter()
         .filter_map(|pt| {
-            let Some((loop_come, loop_go)) = loop_path.dir_pipe_of_pt(*pt) else {
-            return None;
-        };
+            let Some(loop_dir) = loop_path.dir_pipe_of_pt(*pt) else {
+                return None;
+            };
 
             let (Some(path_come), Some(path_go)) = path.dir_pipe_of_pt(*pt).unwrap() else {
-            unreachable!()
-        };
-            Some(dir_intersection((loop_come, loop_go), (path_come, path_go)))
+                unreachable!()
+            };
+            let res = dir_intersection((path_come, path_go), loop_dir);
+            println!("{:?} {:?} {:?}", (path_come, path_go), loop_dir, res);
+            Some(res)
         })
         .collect();
     println!("{stack:?}");
     while let Some(p) = stack.pop() {
         match p {
-            Intersection::AcrossLeftToRight | Intersection::AcrossRightToLeft => {
-                count += 1
-            }
-            Intersection::GoRight => {
-                loop {
-                    let p = stack.pop().unwrap();
-                    if p != Intersection::Forward {
-                        match p {
-                            Intersection::FromLeft => {
-                                count += 1;
-                            }
-                            Intersection::FromRight => {}
-                            _ => unreachable!("stack should be start with fromX, Forward,...,Forward, GoR")
+            Intersection::AcrossLeftToRight | Intersection::AcrossRightToLeft => count += 1,
+            Intersection::GoRight => loop {
+                let p = stack.pop().unwrap();
+                if p != Intersection::Forward {
+                    match p {
+                        Intersection::FromLeft => {
+                            count += 1;
                         }
-                        break;
+                        Intersection::FromRight => {}
+                        _ => unreachable!(
+                            "stack should be start with fromX, Forward,...,Forward, GoR"
+                        ),
                     }
+                    break;
                 }
-            }
-            Intersection::GoLeft => {
-                loop {
-                    let p = stack.pop().unwrap();
-                    if p != Intersection::Forward {
-                        match p {
-                            Intersection::FromRight => {
-                                count += 1;
-                            }
-                            Intersection::FromLeft => {}
-                            _ => unreachable!("stack should be start with fromX, Forward,...,Forward, GoL")
+            },
+            Intersection::GoLeft => loop {
+                let p = stack.pop().unwrap();
+                if p != Intersection::Forward {
+                    match p {
+                        Intersection::FromRight => {
+                            count += 1;
                         }
-                        break;
+                        Intersection::FromLeft => {}
+                        _ => unreachable!(
+                            "stack should be start with fromX, Forward,...,Forward, GoL"
+                        ),
                     }
+                    break;
                 }
-            }
-            Intersection::FromRight => {
-                loop {
-                    let p = stack.pop().unwrap();
-                    if p != Intersection::Reverse {
-                        match p {
-                            Intersection::GoLeft => {
-                                count += 1;
-                            }
-                            Intersection::GoRight => {}
-                            _ => unreachable!("stack should be start with fromX, Forward,...,Forward, GoR")
+            },
+            Intersection::FromRight => loop {
+                let p = stack.pop().unwrap();
+                if p != Intersection::Reverse {
+                    match p {
+                        Intersection::GoLeft => {
+                            count += 1;
                         }
-                        break;
+                        Intersection::GoRight => {}
+                        _ => unreachable!(
+                            "stack should be start with fromX, Forward,...,Forward, GoR"
+                        ),
                     }
+                    break;
                 }
-            }
-            Intersection::FromLeft => {
-                loop {
-                    let p = stack.pop().unwrap();
-                    if p != Intersection::Reverse {
-                        match p {
-                            Intersection::GoRight => {
-                                count += 1;
-                            }
-                            Intersection::GoLeft => {}
-                            _ => unreachable!("stack should be start with fromX, Forward,...,Forward, GoR")
+            },
+            Intersection::FromLeft => loop {
+                let p = stack.pop().unwrap();
+                if p != Intersection::Reverse {
+                    match p {
+                        Intersection::GoRight => {
+                            count += 1;
                         }
-                        break;
+                        Intersection::GoLeft => {}
+                        _ => unreachable!(
+                            "stack should be start with fromX, Forward,...,Forward, GoR"
+                        ),
                     }
+                    break;
                 }
-            }
+            },
             Intersection::TouchLeft | Intersection::TouchRight => {}
-            Intersection::Forward | Intersection::Reverse => unreachable!()
+            Intersection::Forward | Intersection::Reverse => unreachable!(),
         }
     }
     count
@@ -572,7 +573,6 @@ fn get_dir(from: (usize, usize), to: (usize, usize)) -> Option<Direction> {
         None
     }
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 enum Direction {
@@ -827,6 +827,33 @@ mod tests {
         assert_eq!(get_dir((1, 0), (0, 0)), Some(Direction::N));
         assert_eq!(get_dir((0, 0), (0, 1)), Some(Direction::E));
         assert_eq!(get_dir((0, 1), (0, 0)), Some(Direction::W));
+        let loop_path = Loop::new(vec![
+            (1, 1),
+            (1, 2),
+            (1, 3),
+            (2, 3),
+            (3, 3),
+            (3, 2),
+            (3, 1),
+            (2, 1),
+            (1, 1),
+        ]);
+        assert_eq!(
+            loop_path.dir_pipe_of_pt((1, 1)),
+            Some((Direction::N, Direction::E))
+        );
+        assert_eq!(
+            loop_path.dir_pipe_of_pt((1, 2)),
+            Some((Direction::E, Direction::E))
+        );
+        assert_eq!(
+            loop_path.dir_pipe_of_pt((1, 3)),
+            Some((Direction::E, Direction::S))
+        );
+        assert_eq!(
+            loop_path.dir_pipe_of_pt((2, 1)),
+            Some((Direction::N, Direction::N))
+        );
     }
     #[test]
     fn get_line() {
@@ -839,5 +866,281 @@ mod tests {
                 }
             }
         }
+    }
+    #[test]
+    fn dir_intersect_test() {
+        let v = vec![
+            // forward
+            (
+                (Direction::N, Direction::N),
+                (Direction::N, Direction::N),
+                Intersection::Forward,
+            ),
+            (
+                (Direction::E, Direction::E),
+                (Direction::E, Direction::E),
+                Intersection::Forward,
+            ),
+            (
+                (Direction::S, Direction::S),
+                (Direction::S, Direction::S),
+                Intersection::Forward,
+            ),
+            (
+                (Direction::W, Direction::W),
+                (Direction::W, Direction::W),
+                Intersection::Forward,
+            ),
+            (
+                (Direction::N, Direction::W),
+                (Direction::N, Direction::W),
+                Intersection::Forward,
+            ),
+            // reverse
+            (
+                (Direction::N, Direction::N),
+                (Direction::S, Direction::S),
+                Intersection::Reverse,
+            ),
+            (
+                (Direction::E, Direction::E),
+                (Direction::W, Direction::W),
+                Intersection::Reverse,
+            ),
+            (
+                (Direction::S, Direction::S),
+                (Direction::N, Direction::N),
+                Intersection::Reverse,
+            ),
+            (
+                (Direction::W, Direction::W),
+                (Direction::E, Direction::E),
+                Intersection::Reverse,
+            ),
+            (
+                (Direction::N, Direction::W),
+                (Direction::E, Direction::S),
+                Intersection::Reverse,
+            ),
+            // across
+            (
+                (Direction::N, Direction::N),
+                (Direction::E, Direction::E),
+                Intersection::AcrossLeftToRight,
+            ),
+            (
+                (Direction::N, Direction::N),
+                (Direction::W, Direction::W),
+                Intersection::AcrossRightToLeft,
+            ),
+            (
+                (Direction::S, Direction::S),
+                (Direction::W, Direction::W),
+                Intersection::AcrossLeftToRight,
+            ),
+            (
+                (Direction::S, Direction::S),
+                (Direction::E, Direction::E),
+                Intersection::AcrossRightToLeft,
+            ),
+            // touch
+            (
+                (Direction::N, Direction::W),
+                (Direction::W, Direction::N),
+                Intersection::TouchRight,
+            ),
+            (
+                (Direction::N, Direction::W),
+                (Direction::S, Direction::E),
+                Intersection::TouchRight,
+            ),
+            (
+                (Direction::S, Direction::E),
+                (Direction::E, Direction::S),
+                Intersection::TouchRight,
+            ),
+            (
+                (Direction::N, Direction::E),
+                (Direction::E, Direction::N),
+                Intersection::TouchLeft,
+            ),
+            (
+                (Direction::N, Direction::E),
+                (Direction::S, Direction::W),
+                Intersection::TouchLeft,
+            ),
+            (
+                (Direction::S, Direction::W),
+                (Direction::W, Direction::S),
+                Intersection::TouchLeft,
+            ),
+            // from right or left
+            (
+                (Direction::N, Direction::N),
+                (Direction::W, Direction::N),
+                Intersection::FromRight,
+            ),
+            (
+                (Direction::N, Direction::N),
+                (Direction::W, Direction::S),
+                Intersection::FromRight,
+            ),
+            (
+                (Direction::N, Direction::W),
+                (Direction::W, Direction::W),
+                Intersection::FromRight,
+            ),
+            (
+                (Direction::N, Direction::W),
+                (Direction::S, Direction::W),
+                Intersection::FromRight,
+            ),
+            (
+                (Direction::E, Direction::N),
+                (Direction::N, Direction::N),
+                Intersection::FromRight,
+            ),
+            (
+                (Direction::E, Direction::N),
+                (Direction::W, Direction::N),
+                Intersection::FromRight,
+            ),
+            (
+                (Direction::N, Direction::N),
+                (Direction::E, Direction::N),
+                Intersection::FromLeft,
+            ),
+            (
+                (Direction::N, Direction::N),
+                (Direction::E, Direction::S),
+                Intersection::FromLeft,
+            ),
+            (
+                (Direction::N, Direction::E),
+                (Direction::E, Direction::E),
+                Intersection::FromLeft,
+            ),
+            (
+                (Direction::N, Direction::E),
+                (Direction::S, Direction::E),
+                Intersection::FromLeft,
+            ),
+            (
+                (Direction::E, Direction::S),
+                (Direction::S, Direction::S),
+                Intersection::FromLeft,
+            ),
+            (
+                (Direction::E, Direction::S),
+                (Direction::W, Direction::S),
+                Intersection::FromLeft,
+            ),
+            // to left or right
+            (
+                (Direction::N, Direction::N),
+                (Direction::N, Direction::E),
+                Intersection::GoRight,
+            ),
+            (
+                (Direction::N, Direction::N),
+                (Direction::S, Direction::E),
+                Intersection::GoRight,
+            ),
+            (
+                (Direction::N, Direction::W),
+                (Direction::N, Direction::N),
+                Intersection::GoRight,
+            ),
+            (
+                (Direction::N, Direction::W),
+                (Direction::N, Direction::E),
+                Intersection::GoRight,
+            ),
+            (
+                (Direction::E, Direction::N),
+                (Direction::E, Direction::E),
+                Intersection::GoRight,
+            ),
+            (
+                (Direction::E, Direction::N),
+                (Direction::E, Direction::S),
+                Intersection::GoRight,
+            ),
+            (
+                (Direction::N, Direction::N),
+                (Direction::N, Direction::W),
+                Intersection::GoLeft,
+            ),
+            (
+                (Direction::N, Direction::N),
+                (Direction::S, Direction::W),
+                Intersection::GoLeft,
+            ),
+            (
+                (Direction::N, Direction::E),
+                (Direction::N, Direction::N),
+                Intersection::GoLeft,
+            ),
+            (
+                (Direction::N, Direction::E),
+                (Direction::N, Direction::W),
+                Intersection::GoLeft,
+            ),
+            (
+                (Direction::E, Direction::S),
+                (Direction::E, Direction::E),
+                Intersection::GoLeft,
+            ),
+            (
+                (Direction::E, Direction::S),
+                (Direction::E, Direction::N),
+                Intersection::GoLeft,
+            ),
+            // other
+            (
+                (Direction::W, Direction::S),
+                (Direction::N, Direction::N),
+                Intersection::GoRight,
+            )
+        ];
+        for (dir1, dir2, exp) in v {
+            assert_eq!(dir_intersection(dir1, dir2), exp);
+        }
+    }
+    #[test]
+    fn count_test() {
+        let loop_path = Loop::new(vec![
+            (1, 1),
+            (1, 2),
+            (1, 3),
+            (2, 3),
+            (3, 3),
+            (3, 2),
+            (3, 1),
+            (2, 1),
+            (1, 1),
+        ]);
+        let path = PathNonDeg::new(vec![(2, 0), (2, 1), (2, 2)]);
+        assert_eq!(count_across(&loop_path, &path), 1);
+        let path = PathNonDeg::new(vec![(2, 0), (2, 1), (2, 2), (2, 3), (2, 4)]);
+        assert_eq!(count_across(&loop_path, &path), 2);
+        let path = PathNonDeg::new(vec![(1, 0), (1, 1), (1, 2), (1, 3), (1, 4)]);
+        assert_eq!(count_across(&loop_path, &path), 0);
+        let path = PathNonDeg::new(vec![(1, 0), (1, 1), (1, 2), (2, 2), (2, 3), (2, 4)]);
+        assert_eq!(count_across(&loop_path, &path), 2);
+        let path = PathNonDeg::new(vec![
+            (1, 0),
+            (1, 1),
+            (1, 2),
+            (1, 3),
+            (2, 3),
+            (2, 2),
+            (2, 1),
+            (3, 1),
+            (3, 2),
+            (3, 3),
+            (3, 4),
+        ]);
+        assert_eq!(count_across(&loop_path, &path), 2);
     }
 }
