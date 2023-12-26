@@ -93,6 +93,8 @@ impl PipeMap {
                     }
                 }
             }
+            assert!(now == map.start);
+            res.push(now);
             Some(res)
         }
         for direction in vec![Direction::N, Direction::S, Direction::W, Direction::E] {
@@ -178,6 +180,39 @@ impl PathNonDeg {
         }
         v.push(pt2);
         PathNonDeg::new(v)
+    }
+}
+
+struct MiddleReport {
+    hw: (usize, usize),
+    v: Vec<Vec<char>>,
+}
+
+impl MiddleReport {
+    fn new(h: usize, w: usize) -> Self {
+        Self {
+            hw: (h, w),
+            v: vec![vec![' '; h]; w],
+        }
+    }
+    fn get(&self, i: usize, j: usize) -> char {
+        self.v[i][j]
+    }
+    fn write(&mut self, i: usize, j: usize, c: char) {
+        self.v[i][j] = c;
+    }
+    fn print_at_txt(&self) {
+        let content = {
+            let mut string = String::new();
+            for i in 0..self.hw.0 {
+                for j in 0..self.hw.1 {
+                    string.push(self.v[i][j]);
+                }
+                string.push('\n');
+            }
+            string
+        };
+        let file = std::fs::write("./inout/10day.middle", content);
     }
 }
 
@@ -283,83 +318,84 @@ fn dir_intersection(
     (d11, d12): (Direction, Direction),
     (d21, d22): (Direction, Direction),
 ) -> Intersection {
-    if d11 == d21 && d12 == d22 {
-        // forward run
-        // ↑↑
-        // ↑↑
-        Intersection::Forward
-    } else if d11 == d22.neg() && d12 == d21.neg() {
-        // reverse run
-        // ↑↓
-        // ↑↓
-        Intersection::Reverse
-    } else if d11 == d21 {
-        let d = d11.neg();
-        // from are same direction
-        // ↑→
-        // ↑↑  d=↑
-        let d12 = d.rotate(d12);
-        let d22 = d.rotate(d22);
-        if d12 < d22 {
+    // adjust with d12
+    let d11 = d12.rotate(d11);
+    let d21 = d12.rotate(d21);
+    let d22 = d12.rotate(d22);
+    match (d11, d21, d22) {
+        (_, _, Direction::N) if d11 == d21 => Intersection::Forward,
+        (_, Direction::S, _) if d11 == -d22 => Intersection::Reverse,
+        // come from same direction
+        (Direction::E, _, Direction::E)
+        | (Direction::E, _, Direction::S)
+        | (Direction::N, _, Direction::E)
+            if d11 == d21 =>
+        {
             Intersection::GoRight
-        } else {
+        }
+        (Direction::W, _, Direction::W)
+        | (Direction::W, _, Direction::S)
+        | (Direction::N, _, Direction::W)
+            if d11 == d21 =>
+        {
             Intersection::GoLeft
         }
-    } else if d12 == d21.neg() {
-        let d = d21;
-        // reversely run and leave
-        // ↑↓
-        // ↑→  d=↑
-        let d11 = d.rotate(d11);
-        let d22 = d.rotate(d22);
-        if d11 < d22 {
+        // come from another direction
+        (Direction::N, _, Direction::E)
+        | (Direction::E, _, Direction::E)
+        | (Direction::E, _, Direction::S)
+            if d21 == Direction::S =>
+        {
             Intersection::GoRight
-        } else {
+        }
+        (Direction::W, _, Direction::S)
+        | (Direction::W, Direction::S, Direction::W)
+        | (Direction::N, Direction::S, Direction::W)
+            if d21 == Direction::S =>
+        {
             Intersection::GoLeft
         }
-    } else if d12 == d22 {
-        let d = d12;
-        // to are same direction
-        // ↑↑
-        // ↑←  d=↑
-        let d11 = d.rotate(d11.neg());
-        let d21 = d.rotate(d21.neg());
-        if d21 < d11 {
+        // go same direction
+        (Direction::E, Direction::W, _)
+        | (Direction::E, Direction::N, _)
+        | (Direction::N, Direction::W, _)
+            if d22 == Direction::N =>
+        {
             Intersection::FromRight
-        } else {
+        }
+        (Direction::W, Direction::E, _)
+        | (Direction::W, Direction::N, _)
+        | (Direction::N, Direction::E, _)
+            if d22 == Direction::N =>
+        {
             Intersection::FromLeft
         }
-    } else if d11 == d22.neg() {
-        let d = d22;
-        // come in and reversely run
-        // ↑←
-        // ↑↓  d=↓
-        let d11 = d.rotate(d12);
-        let d22 = d.rotate(d21.neg());
-        if d11 < d22 {
+        // come in
+        (Direction::N, Direction::W, _)
+        | (Direction::E, Direction::W, _)
+        | (Direction::E, Direction::S, _)
+            if d11 == -d22 =>
+        {
             Intersection::FromRight
-        } else {
+        }
+        (Direction::N, Direction::E, _)
+        | (Direction::W, Direction::E, _)
+        | (Direction::W, Direction::N, _)
+            if d11 == -d22 =>
+        {
             Intersection::FromLeft
         }
-    } else if d11 == d12 && d21 == d22 {
-        // across in one point
-        // ↑  ←←
-        // ↑
-        match d11.rotate(d21) {
-            Direction::E => Intersection::AcrossLeftToRight,
-            Direction::W => Intersection::AcrossRightToLeft,
-            _ => unreachable!("not in case"),
+        // across
+        (Direction::N, Direction::E, Direction::E) => Intersection::AcrossLeftToRight,
+        (Direction::N, Direction::W, Direction::W) => Intersection::AcrossRightToLeft,
+        // touch
+        (Direction::E, Direction::N, Direction::E) | (Direction::E, Direction::W, Direction::S) => {
+            Intersection::TouchRight
         }
-    } else {
-        // touch in one point
-        // ← ↑    ← ↓
-        // ↑ ← or ↑ →
-        assert!((d11 == d22 && d12 == d21) || (d11 == d21.neg() && d12 == d22.neg()));
-        match d11.neg().rotate(d12) {
-            Direction::E => Intersection::TouchRight,
-            Direction::W => Intersection::TouchLeft,
-            _ => unreachable!(),
+        (Direction::W, Direction::N, Direction::W) | (Direction::W, Direction::E, Direction::S) => {
+            Intersection::TouchLeft
         }
+        _ => unreachable!(),
     }
 }
 
@@ -380,7 +416,7 @@ fn count_across(loop_path: &Loop, path: &PathNonDeg) -> usize {
                 unreachable!()
             };
             let res = dir_intersection((path_come, path_go), loop_dir);
-            println!("{:?} {:?} {:?}", (path_come, path_go), loop_dir, res);
+            // println!("{:?} {:?} {:?}", (path_come, path_go), loop_dir, res);
             Some(res)
         })
         .collect();
@@ -461,6 +497,17 @@ fn compute_part2(pipes: &Vec<Vec<Option<PipeInput>>>) -> usize {
     let h = map.height();
     let w = map.width();
 
+    let mut report = MiddleReport::new(h, w);
+    let mut c = 0;
+    for &(i, j) in &loop_in_map.path {
+        report.write(i, j, char::from_u32(c).unwrap());
+        if c > 10 {
+            c = 0;
+        } else {
+            c += 1;
+        }
+    }
+
     let mut components: Vec<HashSet<(usize, usize)>> = vec![];
 
     for i in 0..h {
@@ -471,13 +518,11 @@ fn compute_part2(pipes: &Vec<Vec<Option<PipeInput>>>) -> usize {
             // pt in new connected component
             let component_of_this = connected_component_of_pt((h, w), &loop_in_map, (i, j));
             if !component_of_this.is_empty() {
-                println!("{:?}", component_of_this);
+                // println!("{:?}", component_of_this);
                 components.push(component_of_this);
             }
         }
     }
-
-    println!("{components:?}");
 
     let out_pt = {
         let mut pt = (0, 0);
@@ -494,7 +539,7 @@ fn compute_part2(pipes: &Vec<Vec<Option<PipeInput>>>) -> usize {
 
     println!("{out_pt:?}");
 
-    components
+    let sum = components
         .into_iter()
         .filter(|set| {
             let pt_in_set: (usize, usize) = {
@@ -503,10 +548,18 @@ fn compute_part2(pipes: &Vec<Vec<Option<PipeInput>>>) -> usize {
             };
             let path_to_outside = PathNonDeg::get_line(out_pt, pt_in_set);
             let count = count_across(&loop_in_map, &path_to_outside);
-            count % 2 == 0
+            for &(i, j) in set {
+                if report.get(i, j) != ' ' {
+                    panic!("why already written?");
+                }
+                report.write(i, j, if count % 2 != 0 { 'i' } else { 'o' });
+            }
+            count % 2 != 0
         })
         .map(|set| set.len())
-        .sum()
+        .sum();
+    report.print_at_txt();
+    sum
 }
 
 fn connected_component_of_pt(
@@ -1101,9 +1154,10 @@ mod tests {
                 (Direction::W, Direction::S),
                 (Direction::N, Direction::N),
                 Intersection::GoRight,
-            )
+            ),
         ];
         for (dir1, dir2, exp) in v {
+            println!("{dir1:?} {dir2:?}");
             assert_eq!(dir_intersection(dir1, dir2), exp);
         }
     }
