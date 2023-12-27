@@ -37,25 +37,30 @@ fn compute_part2(input: Vec<Vec<Image>>) -> usize {
         .flat_map(|i| (0..w).map(move |j| (i, j)))
         .filter(|&(i, j)| input[i][j] == Image::Galaxy)
         .collect();
-    let mut sum = 0;
-    for &pt1 in &all_gal {
-        for &pt2 in &all_gal {
-            let num_row_gal = num_of_range((pt1.0, pt2.0), &all_space_row);
-            let num_col_gal = num_of_range((pt1.1, pt2.1), &all_space_col);
-            let diff = pt1.0.abs_diff(pt2.0) + num_row_gal * 999_999 + pt1.1.abs_diff(pt2.1) + num_col_gal * 999_999;
-            sum += diff;
-        }
-    }
-    sum
+    let sum: usize = all_gal
+        .iter()
+        .flat_map(|pt1| all_gal.iter().map(move |pt2| (pt1, pt2)))
+        .map(|(&pt1, &pt2)| compute_gal_pathlen(pt1, pt2, &all_space_row, &all_space_col))
+        .sum();
+    sum / 2
 }
 
-fn compute_gal_pathlen(pt1: (usize, usize), pt2: (usize, usize), all_space_row: &Vec<usize>, all_space_col: &Vec<usize>) -> usize {
+fn compute_gal_pathlen(
+    pt1: (usize, usize),
+    pt2: (usize, usize),
+    all_space_row: &Vec<usize>,
+    all_space_col: &Vec<usize>,
+) -> usize {
     let pt1_row_ind = all_space_row.binary_search(&pt1.0).unwrap_err();
-    let pt1_col_ind = all_space_col.binary_search(&pt1.0).unwrap_err();
-    let pt2_row_ind = all_space_row.binary_search(&pt1.0).unwrap_err();
-    let pt2_col_ind = all_space_col.binary_search(&pt1.0).unwrap_err();
-    pt1_row_ind.abs_diff(pt2_row_ind) * 999_999;
-    todo!()
+    let pt1_col_ind = all_space_col.binary_search(&pt1.1).unwrap_err();
+    let pt2_row_ind = all_space_row.binary_search(&pt2.0).unwrap_err();
+    let pt2_col_ind = all_space_col.binary_search(&pt2.1).unwrap_err();
+    let num_sp_row = pt1_row_ind.abs_diff(pt2_row_ind);
+    let num_sp_col = pt1_col_ind.abs_diff(pt2_col_ind);
+    (pt1.0.abs_diff(pt2.0) - num_sp_row)
+        + num_sp_row * 1_000_000
+        + (pt1.1.abs_diff(pt2.1) - num_sp_col)
+        + num_sp_col * 1_000_000
 }
 
 fn num_of_range((start, end): (usize, usize), sorted: &Vec<usize>) -> usize {
@@ -139,6 +144,27 @@ mod tests {
         assert_eq!(
             stretch(v),
             vec![vec![Image::Galaxy], vec![Image::Space], vec![Image::Space]]
+        );
+    }
+    #[test]
+    fn gal_diff_test() {
+        let all_space_row = vec![2, 4, 6];
+        let all_space_col = vec![3, 5, 7];
+        assert_eq!(
+            compute_gal_pathlen((0, 0), (1, 1), &all_space_row, &all_space_col),
+            2
+        );
+        assert_eq!(
+            compute_gal_pathlen((1, 1), (0, 0), &all_space_row, &all_space_col),
+            2
+        );
+        assert_eq!(
+            compute_gal_pathlen((1, 1), (3, 1), &all_space_row, &all_space_col),
+            (3 - 1) - 1 + 1_000_000
+        );
+        assert_eq!(
+            compute_gal_pathlen((1, 2), (7, 8), &all_space_row, &all_space_col),
+            1_000_000 * 6 + 6
         );
     }
 }
