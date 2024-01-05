@@ -130,6 +130,7 @@ fn max_of_board(map: &Vec<Vec<bool>>) -> usize {
 const STEP_NUM: usize = 26501365;
 
 // assume that
+// - height == width and start is in the middle of board
 // - top row, bottom row, left col and right col are empty
 // - row of S and col of S  are empty
 // - for any start from the top/bottom row or left/right col, all reachable squares are reached after h+w steps
@@ -226,7 +227,10 @@ impl Memoize {
             }
         }
 
-        if let Some(num) = self.board_closest_step.get(&(closest_point_in_tile, remain_step)) {
+        if let Some(num) = self
+            .board_closest_step
+            .get(&(closest_point_in_tile, remain_step))
+        {
             return *num;
         }
 
@@ -238,7 +242,69 @@ impl Memoize {
             .filter(|b| matches!(b, Some(b) if *b <= remain_step && *b % 2 == remain_step % 2))
             .count();
         println!("{i} {j} {count}");
-        self.board_closest_step.insert((closest_point_in_tile, remain_step), count);
+        self.board_closest_step
+            .insert((closest_point_in_tile, remain_step), count);
+        count
+    }
+    fn compute_all_count(&mut self, step_num: usize) -> usize {
+        let (h, w) = (self.map.len(), self.map[0].len());
+        let mut max_i = (step_num + h + w) / h;
+        let mut count = 0;
+
+        // println!("max_i: {}", max_i);
+        while self.tile_compute((-(max_i as isize), 0), step_num) == 0 {
+            max_i -= 1;
+        }
+        println!(
+            "max_i: {} count: {}",
+            max_i,
+            self.tile_compute((-(max_i as isize), 0), step_num)
+        );
+
+        // count up boundary tile
+        'fors: for i in -(max_i as isize)..=max_i as isize {
+            // max {|j| \mid |i| * h + j * w <= step_num + h + w}
+            let max_j = (step_num + h + w - (i.unsigned_abs() * h)) / w;
+
+            let mut j = -(max_j as isize);
+            loop {
+                let dist = dist_tile((h, w), ((0, 0), self.start), ((i, j), self.start));
+                if step_num < dist {
+                    j += 1;
+                    break;
+                }
+                if dist + h + w < step_num {
+                    break;
+                }
+                let c = self.tile_compute((i, j), step_num);
+                if c == 0 {
+                    continue 'fors;
+                }
+                count += c;
+                j += 1;
+            }
+
+            let mut comp_j = vec![
+                -(max_j as isize) - 1,
+                -(max_j as isize),
+                -(max_j as isize) + 1,
+                (max_j as isize) - 1,
+                (max_j as isize),
+                (max_j as isize) + 1,
+            ];
+
+            comp_j.sort();
+            comp_j.dedup();
+            assert!(-(max_j as isize) + 1 < (max_j as isize) - 1);
+            for j in comp_j {
+                count += self.tile_compute((i, j), step_num);
+            }
+            // for j in -(max_j as isize)..=max_j as isize {
+            //     // let count_tile = memo.tile_compute((i, j), step_num);
+            //     // count += count_tile;
+            // }
+        }
+        // count up inner tile
         count
     }
 }
@@ -246,17 +312,8 @@ impl Memoize {
 fn step_many(start: (usize, usize), map: &Vec<Vec<bool>>, step_num: usize) -> usize {
     let (h, w) = (map.len(), map[0].len());
     let mut memo = Memoize::new(start, map);
-    // enumerate reacheable tile (i,j) ... over estimate (|i| - 1) * h + (|j| - 1) * w <= step_num
-    let mut count = 0;
-    let max_i = (step_num / h + 1);
-    for i in -(max_i as isize)..=max_i as isize {
-        let max_j = (step_num - (i.unsigned_abs() - 1) * h) / w;
-        for j in -(max_j as isize)..=max_j as isize {
-            let count_tile = memo.tile_compute((i, j), step_num);
-            count += count_tile;
-        }
-    }
-    count
+    // enumerate reacheable tile (i,j) ... over estimate |i| * h + |j| * w <= step_num + h + w
+    memo.compute_all_count(step_num)
 }
 
 fn input() -> ((usize, usize), Vec<Vec<bool>>) {
