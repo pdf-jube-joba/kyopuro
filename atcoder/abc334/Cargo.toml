@@ -1,7 +1,44 @@
 [package]
 name = "abc334"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
+
+[package.metadata.cargo-compete.bin]
+abc334-a = { alias = "a", problem = "https://atcoder.jp/contests/abc334/tasks/abc334_a" }
+abc334-b = { alias = "b", problem = "https://atcoder.jp/contests/abc334/tasks/abc334_b" }
+abc334-c = { alias = "c", problem = "https://atcoder.jp/contests/abc334/tasks/abc334_c" }
+abc334-d = { alias = "d", problem = "https://atcoder.jp/contests/abc334/tasks/abc334_d" }
+abc334-e = { alias = "e", problem = "https://atcoder.jp/contests/abc334/tasks/abc334_e" }
+abc334-f = { alias = "f", problem = "https://atcoder.jp/contests/abc334/tasks/abc334_f" }
+abc334-g = { alias = "g", problem = "https://atcoder.jp/contests/abc334/tasks/abc334_g" }
+
+[[bin]]
+name = "abc334-a"
+path = "src/bin/a.rs"
+
+[[bin]]
+name = "abc334-b"
+path = "src/bin/b.rs"
+
+[[bin]]
+name = "abc334-c"
+path = "src/bin/c.rs"
+
+[[bin]]
+name = "abc334-d"
+path = "src/bin/d.rs"
+
+[[bin]]
+name = "abc334-e"
+path = "src/bin/e.rs"
+
+[[bin]]
+name = "abc334-f"
+path = "src/bin/f.rs"
+
+[[bin]]
+name = "abc334-g"
+path = "src/bin/g.rs"
 
 [dependencies]
 num = "=0.2.1"

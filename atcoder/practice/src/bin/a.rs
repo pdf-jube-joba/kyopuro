@@ -1,8 +1,8 @@
 fn main() {
-    proconio::input!{
+    proconio::input! {
         a: usize,
         b: usize, c: usize,
         s: String,
     }
-    println!("{} {}", a+b+c, s);
+    println!("{} {}", a + b + c, s);
 }
