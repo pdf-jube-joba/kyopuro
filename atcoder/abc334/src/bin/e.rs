@@ -53,7 +53,7 @@ fn count(grid: Vec<Vec<bool>>) -> (usize, usize) {
             if j < w - 1 { Some((i, j + 1)) } else { None },
         ]
         .into_iter()
-        .filter_map(|b| b)
+        .flatten()
         .collect()
     };
 
@@ -106,6 +106,8 @@ fn count(grid: Vec<Vec<bool>>) -> (usize, usize) {
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::format;
+
     use proconio::source::once::OnceSource;
 
     use super::*;
@@ -124,6 +126,10 @@ mod tests {
         assert_eq!(fast_pow(3, 2, 7), 2);
         assert_eq!(fast_pow(3, 3, 7), 6);
         assert_eq!(fast_pow(3, 4, 7), 4);
+
+        for i in 1..10_000 {
+            assert_eq!(i * fast_pow(i, MOD - 2, MOD) % MOD, 1);
+        }
     }
     fn read_chars(str: &str) -> Vec<Vec<bool>> {
         let a = OnceSource::from(str);
@@ -146,26 +152,64 @@ mod tests {
             .collect::<Vec<_>>()
     }
     #[test]
-    fn count_test() {
-        let grid = "1 1\n.";
-        assert_eq!(count(read_chars(grid)), (1, 1));
+    fn trivial_case() {
+        for (i, j) in iproduct!(1..=4, 1..=4) {
+            let mut grid = format!("{i} {j}");
+            for _ in 0..i {
+                grid.push('\n');
+                grid.extend((0..j).map(|_| '.'));
+            }
+            let grid = read_chars(&grid);
+            assert_eq!(count(grid), (i * j, i * j));
+        }
 
-        let grid = "2 2\n..\n..";
-        assert_eq!(count(read_chars(grid)), (4, 4));
-
+        let mut grid = String::from("1000 1000");
+        for _ in 0..1_000 {
+            grid.push('\n');
+            grid.extend((0..1_000).map(|_| '.'));
+        }
+        let grid = read_chars(&grid);
+        assert_eq!(count(grid), (1_000 * 1_000, 1_000 * 1_000))
+    }
+    #[test]
+    fn case_2_2() {
         let grid = "2 2\n#.\n..";
+        assert_eq!(count(read_chars(grid)), (4, 3));
+        let grid = "2 2\n.#\n..";
+        assert_eq!(count(read_chars(grid)), (4, 3));
+        let grid = "2 2\n..\n#.";
+        assert_eq!(count(read_chars(grid)), (4, 3));
+        let grid = "2 2\n..\n.#";
         assert_eq!(count(read_chars(grid)), (4, 3));
 
         let grid = "2 2\n##\n..";
         assert_eq!(count(read_chars(grid)), (2, 2));
-
+        let grid = "2 2\n..\n##";
+        assert_eq!(count(read_chars(grid)), (2, 2));
+        let grid = "2 2\n#.\n#.";
+        assert_eq!(count(read_chars(grid)), (2, 2));
+        let grid = "2 2\n.#\n.#";
+        assert_eq!(count(read_chars(grid)), (2, 2));
         let grid = "2 2\n#.\n.#";
         assert_eq!(count(read_chars(grid)), (2, 2));
-
+        let grid = "2 2\n.#\n#.";
+        assert_eq!(count(read_chars(grid)), (2, 2));
+    }
+    #[test]
+    fn case_3_3() {
         let grid = "3 3\n#..\n...\n...";
         assert_eq!(count(read_chars(grid)), (14, 8));
+        let grid = "3 3\n...\n.#.\n...";
+        assert_eq!(count(read_chars(grid)), (12, 8));
+
+        let grid = "3 3\n#..\n#..\n#..";
+        assert_eq!(count(read_chars(grid)), (9, 6));
+        let grid = "3 3\n#.#\n#.#\n#.#";
+        assert_eq!(count(read_chars(grid)), (3, 3));
 
         let grid = "3 3\n#..\n.#.\n...";
         assert_eq!(count(read_chars(grid)), (15, 7));
+        let grid = "3 3\n#.#\n.#.\n#.#";
+        assert_eq!(count(read_chars(grid)), (12, 4));
     }
 }
