@@ -24,7 +24,7 @@ fn main() {
 
     let (sum, red) = count(grid);
 
-    let ans = sum * fast_pow(red, MOD - 2, MOD) % MOD;
+    let ans = (sum * fast_pow(red, MOD - 2, MOD)) % MOD;
 
     println!("{}", ans);
 }
@@ -75,11 +75,11 @@ fn count(grid: Vec<Vec<bool>>) -> (usize, usize) {
             let mut queue: VecDeque<(usize, usize)> = VecDeque::from_iter(vec![(i, j)]);
 
             while let Some(pt) = queue.pop_front() {
-                if !grid[pt.0][pt.1] || grid_components[pt.0][pt.1].is_some() {
+                if !grid[pt.0][pt.1] {
                     continue;
                 }
                 grid_components[pt.0][pt.1] = Some(comp_num);
-                queue.extend(adj(pt));
+                queue.extend(adj(pt).into_iter().filter(|pt| grid_components[pt.0][pt.1].is_none()));
             }
 
             comp_num += 1;
@@ -211,5 +211,7 @@ mod tests {
         assert_eq!(count(read_chars(grid)), (15, 7));
         let grid = "3 3\n#.#\n.#.\n#.#";
         assert_eq!(count(read_chars(grid)), (12, 4));
+        let grid = "3 3\n.##\n#.#\n##.";
+        assert_eq!(count(read_chars(grid)), (3, 3));
     }
 }
