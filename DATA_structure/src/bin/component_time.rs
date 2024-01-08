@@ -108,6 +108,8 @@ fn compute_3(grid: Vec<Vec<bool>>) -> Vec<Vec<Option<usize>>> {
 
 #[cfg(test)]
 mod tests {
+    use itertools::concat;
+
     use super::*;
     #[test]
     fn test() {
@@ -284,5 +286,77 @@ mod tests {
         let time4 = std::time::Instant::now() - start_time;
 
         println!("{:?} {:?} {:?} {:?}", time1, time2, time3, time4);
+    }
+    #[test]
+    fn print_44_all_true() {
+        let size = 4;
+
+        let convert = |(i, j): (usize, usize)| -> char {
+            let str = format!("{:x}", (4 * i + j));
+            str.chars().next().unwrap()
+        };
+
+        let print_vec = |a: &[(usize, usize)]| -> String {
+            format!("[{}]", a.iter().map(|i| convert(*i).to_string()).join(", "))
+        };
+        assert_eq!(print_vec(&[(0, 1), (2, 2), (1, 1)]), "[1, a, 5]");
+
+        let concat =
+            |head: (usize, usize), queue: &VecDeque<(usize, usize)>| -> Vec<(usize, usize)> {
+                let mut v = vec![head];
+                v.extend(queue.iter());
+                v
+            };
+
+        convert((0, 0));
+        // 1 case
+        let mut checked = vec![vec![false; size]; size];
+
+        let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
+        queue.push_back((0, 0));
+
+        println!("1");
+        while let Some(pt) = queue.pop_front() {
+            // println!(
+            //     "| {} | {} | {} |",
+            //     convert(pt),
+            //     print_vec(&concat(pt, &queue)),
+            //     {
+            //         if checked[pt.0][pt.1] {
+            //             "".to_string()
+            //         } else {
+            //             print_vec(&adj((size, size), pt).collect::<Vec<_>>())
+            //         }
+            //     },
+            // );
+            if checked[pt.0][pt.1] {
+                continue;
+            }
+            checked[pt.0][pt.1] = true;
+            queue.extend(adj((size, size), pt));
+        }
+
+        // 2 case
+        let mut checked = vec![vec![false; size]; size];
+
+        let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
+        queue.push_back((0, 0));
+
+        println!("2");
+        while let Some(pt) = queue.pop_front() {
+            println!(
+                "| {} | {} | {} | {} |",
+                convert(pt),
+                print_vec(&concat(pt, &queue)),
+                print_vec(
+                    &adj((size, size), pt)
+                        .filter(|pt2| !checked[pt2.0][pt2.1])
+                        .collect::<Vec<_>>()
+                ),
+                print_vec(&adj((size, size), pt).collect::<Vec<_>>()),
+            );
+            checked[pt.0][pt.1] = true;
+            queue.extend(adj((size, size), pt).filter(|pt2| !checked[pt2.0][pt2.1]));
+        }
     }
 }
