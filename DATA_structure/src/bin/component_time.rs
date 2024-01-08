@@ -359,4 +359,57 @@ mod tests {
             queue.extend(adj((size, size), pt).filter(|pt2| !checked[pt2.0][pt2.1]));
         }
     }
+
+    #[test]
+    fn count_num() {
+        for size in 2..10 {
+            // 1 case
+            let mut checked = vec![vec![false; size]; size];
+            let mut visit_num = vec![vec![0; size]; size];
+            let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
+            queue.push_back((0, 0));
+    
+            while let Some(pt) = queue.pop_front() {
+                visit_num[pt.0][pt.1] += 1;
+                if checked[pt.0][pt.1] {
+                    continue;
+                }
+                checked[pt.0][pt.1] = true;
+                queue.extend(adj((size, size), pt));
+            }
+            
+            println!("1");
+            for i in 0..size {
+                for j in 0..size {
+                    print!("{:04} ", visit_num[i][j]);
+                }
+                println!();
+            }
+
+            println!();
+    
+            // 2 case
+            let mut checked = vec![vec![false; size]; size];
+    
+            let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
+            queue.push_back((0, 0));
+    
+            let mut visit_num = vec![vec![0; size]; size];
+            while let Some(pt) = queue.pop_front() {
+                checked[pt.0][pt.1] = true;
+                visit_num[pt.0][pt.1] += 1;
+                queue.extend(adj((size, size), pt).filter(|pt2| !checked[pt2.0][pt2.1]));
+            }
+            
+            println!("2");
+            for i in 0..size {
+                for j in 0..size {
+                    print!("{:04} ", visit_num[i][j]);
+                }
+                println!();
+            }
+            println!();
+        }
+
+    }
 }
