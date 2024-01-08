@@ -60,3 +60,25 @@ fn compute(a: isize, m: usize, l: isize, r: isize) -> usize {
 
 # e
 なぜか通らないので、テストケースが公開されるまで待つ。
+
+あと気になったこととして、component計算で次の2つでは計算速度が全く違った。
+
+こっちは早い。
+```rust
+while let Some(pt) = queue.pop_front() {
+    if !grid[pt.0][pt.1] || grid_components[pt.0][pt.1].is_some() {
+        continue;
+    }
+    grid_components[pt.0][pt.1] = Some(comp_num);
+    queue.extend(adj(pt))
+}
+```
+こっちは遅い。
+```rust
+while let Some(pt) = queue.pop_front() {
+    grid_components[pt.0][pt.1] = Some(comp_num);
+    queue.extend(adj(pt).filter(|pt2| {
+        grid_components[pt2.0][pt2.1].is_none() && grid[pt2.0][pt2.1]
+    }));
+}
+```

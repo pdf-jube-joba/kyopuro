@@ -45,7 +45,7 @@ fn fast_pow(mut a: usize, mut m: usize, p: usize) -> usize {
 fn count(grid: Vec<Vec<bool>>) -> (usize, usize) {
     let (h, w) = (grid.len(), grid[0].len());
 
-    let adj = |(i, j): (usize, usize)| -> Vec<(usize, usize)> {
+    let adj = |(i, j): (usize, usize)| {
         vec![
             if i > 0 { Some((i - 1, j)) } else { None },
             if i < h - 1 { Some((i + 1, j)) } else { None },
@@ -54,45 +54,46 @@ fn count(grid: Vec<Vec<bool>>) -> (usize, usize) {
         ]
         .into_iter()
         .flatten()
-        .collect()
     };
 
-    let (grid_components, components_num, red_num): (Vec<Vec<Option<usize>>>, usize, usize) = {
-        let mut grid_components: Vec<Vec<Option<usize>>> = vec![vec![None; w]; h];
-        let mut comp_num = 0;
-        let mut red_num = 0;
+    let (grid_components, components_num, red_num): (Vec<Vec<Option<usize>>>, usize, usize) =
+        {
+            let mut grid_components: Vec<Vec<Option<usize>>> = vec![vec![None; w]; h];
+            let mut comp_num = 0;
+            let mut red_num = 0;
 
-        for (i, j) in iproduct!(0..h, 0..w) {
-            if grid_components[i][j].is_some() {
-                continue;
-            }
-
-            if !grid[i][j] {
-                red_num += 1;
-                continue;
-            }
-
-            let mut queue: VecDeque<(usize, usize)> = VecDeque::from_iter(vec![(i, j)]);
-
-            while let Some(pt) = queue.pop_front() {
-                if !grid[pt.0][pt.1] {
+            for (i, j) in iproduct!(0..h, 0..w) {
+                if grid_components[i][j].is_some() {
                     continue;
                 }
-                grid_components[pt.0][pt.1] = Some(comp_num);
-                queue.extend(adj(pt).into_iter().filter(|pt| grid_components[pt.0][pt.1].is_none()));
+
+                if !grid[i][j] {
+                    red_num += 1;
+                    continue;
+                }
+
+                let mut queue: VecDeque<(usize, usize)> = VecDeque::from_iter(vec![(i, j)]);
+
+                while let Some(pt) = queue.pop_front() {
+                    if !grid[pt.0][pt.1] || grid_components[pt.0][pt.1].is_some() {
+                        continue;
+                    }
+                    grid_components[pt.0][pt.1] = Some(comp_num);
+                    queue.extend(adj(pt)) //.filter(|pt2| {
+                        // grid_components[pt2.0][pt2.1].is_none() && grid[pt2.0][pt2.1]
+                    //}));
+                }
+
+                comp_num += 1;
             }
 
-            comp_num += 1;
-        }
-
-        (grid_components, comp_num, red_num)
-    };
+            (grid_components, comp_num, red_num)
+        };
 
     let all_sum: usize = iproduct!(0..h, 0..w)
         .filter(|&(i, j)| !grid[i][j])
         .map(|(i, j)| {
             let mut adj_comp: Vec<usize> = adj((i, j))
-                .into_iter()
                 .filter_map(|(i, j)| grid_components[i][j])
                 .collect();
             adj_comp.sort();
@@ -106,8 +107,7 @@ fn count(grid: Vec<Vec<bool>>) -> (usize, usize) {
 
 #[cfg(test)]
 mod tests {
-    use std::fmt::format;
-
+    use itertools::Itertools;
     use proconio::source::once::OnceSource;
 
     use super::*;
@@ -213,5 +213,16 @@ mod tests {
         assert_eq!(count(read_chars(grid)), (12, 4));
         let grid = "3 3\n.##\n#.#\n##.";
         assert_eq!(count(read_chars(grid)), (3, 3));
+    }
+    #[test]
+    fn random_tle() {
+        let grid: Vec<Vec<bool>> = (0..1_000)
+            .map(|_| {
+                (0..1_000)
+                    .map(|_| rand::random::<bool>())
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        count(grid);
     }
 }
