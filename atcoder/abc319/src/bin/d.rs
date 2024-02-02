@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 fn main() {
     proconio::input! {
         n: usize, m: usize,
@@ -12,7 +14,7 @@ fn min_window(l: Vec<usize>, m: usize) -> usize {
     // minimal_linenum(l, ok) = Some(1) <=> can print in n line and m line (because m <= n)
     let mut ok = l.iter().sum::<usize>() + (l.len() - 1);
     // assert!(minimal_linenum(&l, ok) == Some(1));
-    // ok >= ng
+    // // ok >= ng
     while ok - ng > 1 {
         let mid = (ok + ng) / 2;
         let res = minimal_linenum(&l, mid);
@@ -29,7 +31,7 @@ fn min_window(l: Vec<usize>, m: usize) -> usize {
 // output: min line number to print word in window
 //  but return None if any of word satisfy length > window (it cant print on window)
 fn minimal_linenum(l: &[usize], w: usize) -> Option<usize> {
-    let mut line: Vec<Vec<usize>> = vec![vec![]];
+    let mut line: usize = 1;
     let mut current_col = 0;
     // current_col == (sum_i (ki + 1)) where [k0...ki] = line.last()
     // current_col <= w
@@ -38,17 +40,17 @@ fn minimal_linenum(l: &[usize], w: usize) -> Option<usize> {
         if li > w {
             return None;
         }
+
         // go next line
         if current_col + li > w {
-            line.push(vec![]);
+            line += 1;
             current_col = 0;
         }
 
         // put word and space
-        line.last_mut().unwrap().push(li);
         current_col += li + 1;
     }
-    Some(line.len())
+    Some(line)
 }
 
 #[cfg(test)]
