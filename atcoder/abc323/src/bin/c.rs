@@ -37,8 +37,9 @@ fn min_solve_num(a: Vec<usize>, s: Vec<Vec<bool>>) -> Vec<usize> {
     let now_point: Vec<usize> = (0..n)
         .map(|i| {
             (0..m)
-                .filter_map(|j| if s[i][j] { Some(a[j] + i) } else { None })
-                .sum()
+                .filter_map(|j| if s[i][j] { Some(a[j]) } else { None })
+                .sum::<usize>()
+            + (i + 1) // bonus point
         })
         .collect_vec();
     let max_point = *now_point.iter().max().unwrap();
@@ -64,4 +65,14 @@ fn min_solve_num(a: Vec<usize>, s: Vec<Vec<bool>>) -> Vec<usize> {
             ans
         })
         .collect_vec()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn min_test() {
+        let res = min_solve_num(vec![100], vec![vec![false], vec![false]]);
+        assert_eq!(res, vec![1, 0])
+    }
 }
