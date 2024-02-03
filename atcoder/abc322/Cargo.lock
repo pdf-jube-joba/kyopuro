@@ -6,6 +6,7 @@ version = 3
 name = "abc322"
 version = "0.1.0"
 dependencies = [
+ "ac-library-rs",
  "alga",
  "ascii",
  "bitset-fixed",
@@ -46,6 +47,11 @@ dependencies = [
  "text_io",
  "whiteread",
 ]
+
+[[package]]
+name = "ac-library-rs"
+version = "0.2.0-alpha.1"
+source = "git+https://github.com/rust-lang-ja/ac-library-rs#a629ff0f5279259189316b327af9c4f864d69441"
 
 [[package]]
 name = "aho-corasick"

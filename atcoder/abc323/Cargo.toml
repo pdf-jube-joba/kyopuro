@@ -1,43 +1,43 @@
 [package]
-name = "abc322"
+name = "abc323"
 version = "0.1.0"
 edition = "2021"
 
 [package.metadata.cargo-compete.bin]
-abc322-a = { alias = "a", problem = "https://atcoder.jp/contests/abc322/tasks/abc322_a" }
-abc322-b = { alias = "b", problem = "https://atcoder.jp/contests/abc322/tasks/abc322_b" }
-abc322-c = { alias = "c", problem = "https://atcoder.jp/contests/abc322/tasks/abc322_c" }
-abc322-d = { alias = "d", problem = "https://atcoder.jp/contests/abc322/tasks/abc322_d" }
-abc322-e = { alias = "e", problem = "https://atcoder.jp/contests/abc322/tasks/abc322_e" }
-abc322-f = { alias = "f", problem = "https://atcoder.jp/contests/abc322/tasks/abc322_f" }
-abc322-g = { alias = "g", problem = "https://atcoder.jp/contests/abc322/tasks/abc322_g" }
+abc323-a = { alias = "a", problem = "https://atcoder.jp/contests/abc323/tasks/abc323_a" }
+abc323-b = { alias = "b", problem = "https://atcoder.jp/contests/abc323/tasks/abc323_b" }
+abc323-c = { alias = "c", problem = "https://atcoder.jp/contests/abc323/tasks/abc323_c" }
+abc323-d = { alias = "d", problem = "https://atcoder.jp/contests/abc323/tasks/abc323_d" }
+abc323-e = { alias = "e", problem = "https://atcoder.jp/contests/abc323/tasks/abc323_e" }
+abc323-f = { alias = "f", problem = "https://atcoder.jp/contests/abc323/tasks/abc323_f" }
+abc323-g = { alias = "g", problem = "https://atcoder.jp/contests/abc323/tasks/abc323_g" }
 
 [[bin]]
-name = "abc322-a"
+name = "abc323-a"
 path = "src/bin/a.rs"
 
 [[bin]]
-name = "abc322-b"
+name = "abc323-b"
 path = "src/bin/b.rs"
 
 [[bin]]
-name = "abc322-c"
+name = "abc323-c"
 path = "src/bin/c.rs"
 
 [[bin]]
-name = "abc322-d"
+name = "abc323-d"
 path = "src/bin/d.rs"
 
 [[bin]]
-name = "abc322-e"
+name = "abc323-e"
 path = "src/bin/e.rs"
 
 [[bin]]
-name = "abc322-f"
+name = "abc323-f"
 path = "src/bin/f.rs"
 
 [[bin]]
-name = "abc322-g"
+name = "abc323-g"
 path = "src/bin/g.rs"
 
 [dependencies]
