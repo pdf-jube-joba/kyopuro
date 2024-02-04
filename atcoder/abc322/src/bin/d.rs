@@ -65,7 +65,7 @@ fn rec(
 fn put(
     p: &Vec<Vec<bool>>,
     (x, y): (isize, isize),
-    grid: &mut Vec<Vec<Option<usize>>>,
+    grid: &Vec<Vec<Option<usize>>>,
     n: usize,
 ) -> Option<Vec<Vec<Option<usize>>>> {
     let l = p.len();
