@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use proconio::marker::Usize1;
+use proconio::{fastout, marker::Usize1};
 
 fn main() {
     proconio::input! {
@@ -10,23 +10,25 @@ fn main() {
 
     let res = relative_position(n, abxy);
 
-    for i in res {
-        println!(
-            "{}",
+    let s: String = res
+        .into_iter()
+        .map(|i| {
             if let Some(pos) = i {
-                format!("{} {}", pos.0, pos.1)
+                format!("{} {}\n", pos.0, pos.1)
             } else {
-                "undecidable".to_string()
+                "undecidable\n".to_string()
             }
-        );
-    }
+        })
+        .collect();
+
+    print!("{s}");
 }
 
 fn relative_position(
     n: usize,
     abxy: Vec<(usize, usize, isize, isize)>,
 ) -> Vec<Option<(isize, isize)>> {
-    // to_edges[i] = { (j, xi, yi) | (i, j, xi, yi) in abxy }
+    // to_edges[i] = { (j, xi, yi) | (i, j, xi, yi) in abxy or (j, i, -xi, -yi) in abxy }
     let to_edges: Vec<Vec<(usize, (isize, isize))>> = {
         let mut to_edges = vec![vec![]; n];
         for (a, b, x, y) in abxy {
@@ -36,7 +38,6 @@ fn relative_position(
         to_edges
     };
 
-    //
     let mut position: Vec<Option<(isize, isize)>> = vec![None; n];
 
     let mut queue: VecDeque<(usize, (isize, isize))> = VecDeque::new();
