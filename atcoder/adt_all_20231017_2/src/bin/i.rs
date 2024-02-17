@@ -13,7 +13,7 @@ fn is_first_win(s: Vec<Vec<char>>) -> bool {
     // game_tree[S subset {0..n}][c: char] = win first when used S, last c
     let mut game_tree: Vec<Vec<Option<bool>>> = vec![vec![None; 1 << n]; 1 << 8];
 
-    rec(n, &mut game_tree, (1 << n) - 1)
+    rec(n, &mut game_tree, (1 << n) - 1, )
 }
 
 fn rec(n: usize, game_tree: &mut Vec<Vec<Option<bool>>>, subset: usize, c: char) -> bool {
