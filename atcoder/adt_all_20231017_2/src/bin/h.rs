@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use num_integer::{lcm, Integer};
 
 fn main() {
@@ -8,9 +9,11 @@ fn main() {
         qs: [usize; q],
     }
     let pre = Pre::new(pt);
-    for q in qs {
-        println!("{}", q + x + pre.duration(q + x) + y)
-    }
+    let s = qs
+        .into_iter()
+        .map(|q| format!("{}", q + x + pre.duration(q + x) + y))
+        .join("\n");
+    println!("{}", s)
 }
 
 struct Pre {
