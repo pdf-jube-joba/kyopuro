@@ -41,10 +41,10 @@ fn count_of_loop(partition: &Vec<usize>) -> ModInt {
         v
     };
     factorial(n)
-        * lf.into_iter()
+        / lf.into_iter()
             .enumerate()
             .skip(1)
-            .map(|(l, f)| factorial(l - 1).pow(f) / (factorial(l).pow(f) * factorial(f as usize)))
+            .map(|(l, f)| (ModInt::new(l).pow(f as u64) * factorial(f as usize)))
             .product::<ModInt>()
 }
 
@@ -53,9 +53,8 @@ fn next_partition(v: &mut Vec<usize>) -> bool {
     if v.len() == 1 {
         return false;
     }
-    let i = (1..v.len()-1).rev().find(|&i| v[i-1] > v[i]).unwrap_or(0);
-    let rem: usize = v[i+1..].iter().sum();
-    v.truncate(i+1);
+    let i = (1..v.len() - 1).rfind(|&i| v[i - 1] > v[i]).unwrap_or(0);
+    let rem: usize = v.split_off(i + 1).into_iter().sum();
     v[i] += 1;
     v.extend(vec![1; rem - 1]);
     true
