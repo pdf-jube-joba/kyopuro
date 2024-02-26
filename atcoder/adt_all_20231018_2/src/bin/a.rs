@@ -1,3 +1,9 @@
+use itertools::Itertools;
+
 fn main() {
-    todo!();
+    proconio::input! {
+        k: usize,
+    }
+    let chars: Vec<char> = ('A'..='Z').collect();
+    println!("{}", chars[0..k].iter().join(""))
 }
