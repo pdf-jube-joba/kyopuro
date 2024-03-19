@@ -62,3 +62,5 @@ fn pre_order_and_in_order_rec(
 これは stack overflow になる。
 確かに引数に参照が4つも入っているので重いかも。
 これを変えたい。
+替えることはできたが、参照をまとめてもテストでは stack overflow になった。
+一方で、提出したら普通に許された。
