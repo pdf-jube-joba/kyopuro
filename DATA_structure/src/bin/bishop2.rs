@@ -79,166 +79,205 @@ fn move_to(n: usize, from: (usize, usize), diff: (isize, isize)) -> Option<(usiz
     }
 }
 
-fn bishop2_1(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<usize> {
-    let n = s.len();
-    let mut visited: Vec<Vec<Option<usize>>> = vec![vec![None; n]; n];
-    let mut queue: VecDeque<((usize, usize), usize)> = VecDeque::new();
-    queue.push_back((a, 0));
-    while let Some((next, step)) = queue.pop_front() {
-        if visited[next.0][next.1].is_some() {
-            continue;
-        }
-        visited[next.0][next.1] = Some(step);
-        for dir in DIRECTION {
-            for d in 0..n {
-                let Some(t) = move_to(n, next, (d as isize * dir.0, d as isize * dir.1)) else {
-                    break;
-                };
-                if s[t.0][t.1] {
-                    break;
+mod bishop2s {
+    use super::*;
+    pub fn bishop2_1(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<usize> {
+        let n = s.len();
+        let mut visited: Vec<Vec<Option<usize>>> = vec![vec![None; n]; n];
+        let mut queue: VecDeque<((usize, usize), usize)> = VecDeque::new();
+        queue.push_back((a, 0));
+        while let Some((next, step)) = queue.pop_front() {
+            if visited[next.0][next.1].is_some() {
+                continue;
+            }
+            visited[next.0][next.1] = Some(step);
+            for dir in DIRECTION {
+                for d in 0..n {
+                    let Some(n) = move_to(n, next, (d as isize * dir.0, d as isize * dir.1)) else {
+                        break;
+                    };
+                    if s[n.0][n.1] {
+                        break;
+                    }
+                    queue.push_back((n, step + 1));
                 }
-                queue.push_back((t, step + 1));
             }
         }
+        visited[b.0][b.1]
     }
-    visited[b.0][b.1]
-}
-
-fn bishop2_1_2(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<usize> {
-    let n = s.len();
-
-    let mut dist: Vec<Vec<usize>> = vec![vec![std::usize::MAX; n]; n];
-
-    let mut queue: VecDeque<((usize, usize), usize)> = VecDeque::new();
-    queue.push_back((a, 0));
-
-    while let Some((next, step)) = queue.pop_front() {
-        if dist[next.0][next.1] != std::usize::MAX {
-            continue;
-        }
-        dist[next.0][next.1] = step;
-        for dir in DIRECTION {
-            for d in 0..n {
-                let Some(t) = move_to(n, next, (d as isize * dir.0, d as isize * dir.1)) else {
-                    break;
-                };
-                if s[t.0][t.1] {
-                    break;
+    
+    pub fn bishop2_1_2(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<usize> {
+        let n = s.len();
+    
+        let mut dist: Vec<Vec<usize>> = vec![vec![std::usize::MAX; n]; n];
+    
+        let mut queue: VecDeque<((usize, usize), usize)> = VecDeque::new();
+        queue.push_back((a, 0));
+    
+        while let Some((next, step)) = queue.pop_front() {
+            if dist[next.0][next.1] != std::usize::MAX {
+                continue;
+            }
+            dist[next.0][next.1] = step;
+            for dir in DIRECTION {
+                for d in 0..n {
+                    let Some(t) = move_to(n, next, (d as isize * dir.0, d as isize * dir.1)) else {
+                        break;
+                    };
+                    if s[t.0][t.1] {
+                        break;
+                    }
+    
+                    queue.push_back((t, step + 1));
                 }
-
-                queue.push_back((t, step + 1));
             }
         }
-    }
-
-    if dist[b.0][b.1] == std::usize::MAX {
-        None
-    } else {
-        Some(dist[b.0][b.1])
-    }
-}
-
-fn bishop2_2(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<usize> {
-    let n = s.len();
-
-    let mut dist: Vec<Vec<Vec<usize>>> = vec![vec![vec![std::usize::MAX; DIRECTION.len()]; n]; n];
-    let mut visited: Vec<Vec<Vec<bool>>> = vec![vec![vec![false; DIRECTION.len()]; n]; n];
-
-    let mut queue: VecDeque<((usize, usize), usize)> = VecDeque::new();
-
-    for i in 0..DIRECTION.len() {
-        let direction = DIRECTION[i];
-        let Some(next) = move_to(n, a, direction) else {
-            continue;
-        };
-        if s[next.0][next.1] {
-            continue;
+    
+        if dist[b.0][b.1] == std::usize::MAX {
+            None
+        } else {
+            Some(dist[b.0][b.1])
         }
-        dist[next.0][next.1][i] = 1;
-        queue.push_back((next, i));
     }
-
-    while let Some((next, next_i)) = queue.pop_front() {
-        if visited[next.0][next.1][next_i] {
-            continue;
+    
+    pub fn bishop2_1_3(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<usize> {
+        let n = s.len();
+    
+        let mut dist: Vec<Vec<usize>> = vec![vec![std::usize::MAX; n]; n];
+    
+        let mut queue: VecDeque<((usize, usize), usize)> = VecDeque::new();
+        queue.push_back((a, 0));
+    
+        while let Some((next, step)) = queue.pop_front() {
+            if dist[next.0][next.1] != std::usize::MAX {
+                continue;
+            }
+            dist[next.0][next.1] = step;
+            for dir in DIRECTION {
+                for d in 0..n {
+                    let Some(t) = move_to(n, next, (d as isize * dir.0, d as isize * dir.1)) else {
+                        break;
+                    };
+                    if s[t.0][t.1] {
+                        break;
+                    }
+    
+                    if dist[next.0][next.1] != std::usize::MAX {
+                        break;
+                    }
+                    dist[next.0][next.1] = step;
+                    queue.push_back((t, step + 1));
+                }
+            }
         }
-        visited[next.0][next.1][next_i] = true;
-
-        if next == b {
-            return Some(dist[next.0][next.1][next_i]);
+    
+        if dist[b.0][b.1] == std::usize::MAX {
+            None
+        } else {
+            Some(dist[b.0][b.1])
         }
-
-        let dist_next = dist[next.0][next.1][next_i];
-
-        for neigh_i in 0..DIRECTION.len() {
-            let Some(neigh) = move_to(n, next, DIRECTION[neigh_i]) else {
+    }
+    
+    pub fn bishop2_2(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<usize> {
+        let n = s.len();
+    
+        let mut dist: Vec<Vec<Vec<usize>>> = vec![vec![vec![std::usize::MAX; DIRECTION.len()]; n]; n];
+        let mut visited: Vec<Vec<Vec<bool>>> = vec![vec![vec![false; DIRECTION.len()]; n]; n];
+    
+        let mut queue: VecDeque<((usize, usize), usize)> = VecDeque::new();
+    
+        for i in 0..DIRECTION.len() {
+            let direction = DIRECTION[i];
+            let Some(next) = move_to(n, a, direction) else {
                 continue;
             };
-            if s[neigh.0][neigh.1] {
+            if s[next.0][next.1] {
                 continue;
             }
-
-            let diff: usize = if next_i == neigh_i { 0 } else { 1 };
-
-            if dist[neigh.0][neigh.1][neigh_i] <= dist_next + diff {
-                continue;
-            }
-
-            dist[neigh.0][neigh.1][neigh_i] = dist_next + diff;
-
-            if next_i == neigh_i {
-                queue.push_front((neigh, neigh_i));
-            } else {
-                queue.push_back((neigh, neigh_i));
-            }
+            dist[next.0][next.1][i] = 1;
+            queue.push_back((next, i));
         }
-    }
-
-    None
-}
-
-fn bishop2_3(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<usize> {
-    let n = s.len();
-
-    let mut dist: Vec<Vec<usize>> = vec![vec![std::usize::MAX; n]; n];
-    dist[a.0][a.1] = 0;
-
-    let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
-    queue.push_back(a);
-
-    while let Some(next) = queue.pop_front() {
-        for direction in DIRECTION {
-            let mut count = 0;
-            loop {
-                count += 1;
-                let Some(n) = move_to(n, next, (direction.0 * count, direction.1 * count)) else {
-                    break;
-                };
-                if s[n.0][n.1] {
-                    break;
-                }
-                if dist[n.0][n.1] == dist[next.0][next.1] + 1 {
+    
+        while let Some((next, next_i)) = queue.pop_front() {
+            if visited[next.0][next.1][next_i] {
+                continue;
+            }
+            visited[next.0][next.1][next_i] = true;
+    
+            if next == b {
+                return Some(dist[next.0][next.1][next_i]);
+            }
+    
+            let dist_next = dist[next.0][next.1][next_i];
+    
+            for neigh_i in 0..DIRECTION.len() {
+                let Some(neigh) = move_to(n, next, DIRECTION[neigh_i]) else {
                     continue;
-                    // break; ではだめらしい。
+                };
+                if s[neigh.0][neigh.1] {
+                    continue;
                 }
-                if dist[n.0][n.1] != std::usize::MAX {
-                    break;
+    
+                let diff: usize = if next_i == neigh_i { 0 } else { 1 };
+    
+                if dist[neigh.0][neigh.1][neigh_i] <= dist_next + diff {
+                    continue;
                 }
-                dist[n.0][n.1] = dist[next.0][next.1] + 1;
-                queue.push_back(n);
+    
+                dist[neigh.0][neigh.1][neigh_i] = dist_next + diff;
+    
+                if next_i == neigh_i {
+                    queue.push_front((neigh, neigh_i));
+                } else {
+                    queue.push_back((neigh, neigh_i));
+                }
             }
         }
-    }
-
-    if dist[b.0][b.1] == std::usize::MAX {
+    
         None
-    } else {
-        Some(dist[b.0][b.1])
+    }
+    
+    pub fn bishop2_3(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<usize> {
+        let n = s.len();
+    
+        let mut dist: Vec<Vec<usize>> = vec![vec![std::usize::MAX; n]; n];
+        dist[a.0][a.1] = 0;
+    
+        let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
+        queue.push_back(a);
+    
+        while let Some(next) = queue.pop_front() {
+            for direction in DIRECTION {
+                for d in 0..n {
+                    let Some(n) = move_to(n, next, (d as isize * direction.0, d as isize * direction.1)) else {
+                        break;
+                    };
+                    if s[n.0][n.1] {
+                        break;
+                    }
+                    if dist[n.0][n.1] == dist[next.0][next.1] + 1 {
+                        continue;
+                    }
+                    if dist[n.0][n.1] != std::usize::MAX {
+                        break;
+                    }
+                    dist[n.0][n.1] = dist[next.0][next.1] + 1;
+                    queue.push_back(n);
+                }
+            }
+        }
+    
+        if dist[b.0][b.1] == std::usize::MAX {
+            None
+        } else {
+            Some(dist[b.0][b.1])
+        }
     }
 }
 
 fn main() {
-    let f = vec![bishop2_1, bishop2_2, bishop2_3];
+    use bishop2s::*;
+    let f = vec![bishop2_1, bishop2_1_2, bishop2_1_3, bishop2_2, bishop2_3];
     let (size_min, size_max) = (5, 100);
     let iter_num = 100;
     // for i in size_min..size_max {
@@ -278,6 +317,7 @@ fn main() {
             aves[n] += end - start;
         }
         eprintln!("{anss:?}");
+        
         assert!((0..f.len()).all(|i| anss[i] == anss[0]));
     }
 
@@ -309,9 +349,25 @@ fn p(a: (usize, usize), b: (usize, usize), grid: Vec<Vec<bool>>) {
     }
 }
 
+fn conv(a: Vec<Vec<char>>) -> Vec<Vec<bool>> {
+    a.into_iter()
+        .map(|si| {
+            si.into_iter()
+                .map(|c| match c {
+                    '.' => false,
+                    '#' => true,
+                    _ => unreachable!(),
+                })
+                .collect_vec()
+        })
+        .collect_vec()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use proconio::marker::{Chars, Usize1};
+
+    use super::{*, bishop2s::*};
     #[test]
     fn bi1() {
         let size = 30;
@@ -323,5 +379,21 @@ mod tests {
                 bishop2_1_2(ri.0, ri.1, ri.2)
             );
         }
+    }
+    #[test]
+    fn a() {
+        let str: &str = &std::fs::read_to_string("./input/bishop2.in")
+            .expect("Should have been able to read the file");
+        let source = proconio::source::auto::AutoSource::from(str);
+        proconio::input! {
+            from source,
+            n: usize,
+            a: (Usize1, Usize1), b: (Usize1, Usize1),
+            s: [Chars; n],
+        }
+        eprintln!("{a:?} {b:?}");
+        let res = bishop2_3(a, b, conv(s.clone()));
+        let res2 = bishop2_1_3(a, b, conv(s));
+        assert_eq!(res, res2);
     }
 }
