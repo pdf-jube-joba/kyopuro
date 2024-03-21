@@ -44,3 +44,10 @@ fn bishop2(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<us
 ```
 これは O(n^3) 解法ではあるがちょうど Ω(n^3) か？
 （各マスごとに n に比例するぐらいのマスを queue に入れてるので）
+
+ダイクストラ法で近くの辺をたどる際に「dist[w] >= dist[v] ならなにかする」を毎回忘れる。
+正当性がわかってないかも。
+
+あと、他の提出みてたら、01bfsでない回答なのに早い奴があった。
+https://atcoder.jp/contests/abc246/submissions/48257153
+なんで？
