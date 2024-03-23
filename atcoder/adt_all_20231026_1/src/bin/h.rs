@@ -49,17 +49,15 @@ fn bishop2(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<us
     let n = s.len();
 
     let mut dist: Vec<Vec<usize>> = vec![vec![std::usize::MAX; n]; n];
+    dist[a.0][a.1] = 0;
 
-    let mut queue: VecDeque<((usize, usize), usize)> = VecDeque::new();
-    queue.push_back((a, 0));
+    let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
+    queue.push_back(a);
 
-    while let Some((next, step)) = queue.pop_front() {
-        if dist[next.0][next.1] != std::usize::MAX {
-            continue;
-        }
-        dist[next.0][next.1] = step;
+    while let Some(next) = queue.pop_front() {
+        let now_dist = dist[next.0][next.1];
         for dir in DIRECTION {
-            for d in 0..n {
+            for d in 1..n {
                 let Some(t) = move_to(n, next, (d as isize * dir.0, d as isize * dir.1)) else {
                     break;
                 };
@@ -67,7 +65,14 @@ fn bishop2(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<us
                     break;
                 }
 
-                queue.push_back((t, step + 1));
+                if dist[t.0][t.1] < now_dist + 1 {
+                    break;
+                }
+
+                if dist[t.0][t.1] > now_dist + 1 {
+                    dist[t.0][t.1] = now_dist + 1;
+                    queue.push_back(t);
+                }
             }
         }
     }

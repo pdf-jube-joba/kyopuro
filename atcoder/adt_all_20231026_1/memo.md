@@ -51,3 +51,15 @@ fn bishop2(a: (usize, usize), b: (usize, usize), s: Vec<Vec<bool>>) -> Option<us
 あと、他の提出みてたら、01bfsでない回答なのに早い奴があった。
 https://atcoder.jp/contests/abc246/submissions/48257153
 なんで？
+枝かりをするらしい
+https://drken1215.hatenablog.com/entry/2022/04/03/192300
+
+# i
+$a[0 \ldots n]$ にたいして各 $k in 0 \ldots= n$ ごとに $(\sum_{i \in 0 \ldots k, j \in 0 \ldots k} \max(a[i], a[j])) / k^2$ を求める。
+各 $k$ ごとに $\sum \cdots$ の部分を求めれることを考えると、 $k$ から $k+1$ ができる。
+$S[i \in 0 \ldots= n] = \sum_{i \in 0 \ldots k, j \in 0 \ldots k} \max(a[i], a[j])$ とする。
+- $S[0] = 0$
+- $k in 0\ldots n$, $S[k+1] = S[k] + 2 * \sum_{i \in 0 \ldots k} \max(a[i], a[k]) + a[k]$
+と書けて、求めるのは $k in 0..=n$ ごとに $S[k] / k^2$ となる。
+次に $k in 0\ldots n$, $s[k in 0 \ldots n] = \sum_{i in 0 \ldots k} \max(a[i], a[k])$ を求めたい。
+適当に分ければ、 $s[k in 0 \ldots n] = (\sum_{i in 0 \ldots k, a[i] \leq a[k]}) * a[k] + \sum_{i in 0 \ldots k, a[i] > a[k]} a[i]$ となる。

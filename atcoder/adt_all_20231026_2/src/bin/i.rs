@@ -1,3 +1,13 @@
+use ac_library::ModInt998244353 as ModInt;
+
 fn main() {
-    todo!();
+    proconio::input! {
+        n: usize,
+        a: [usize; n],
+    }
+
+}
+
+fn make_10_again(a: Vec<usize>) -> ModInt {
+    todo!()
 }
