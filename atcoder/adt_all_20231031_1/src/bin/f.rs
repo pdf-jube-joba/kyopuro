@@ -20,6 +20,17 @@ fn x_drawing(
     (a, b): (usize, usize),
     (p, q, r, s): (usize, usize, usize, usize),
 ) -> Vec<Vec<bool>> {
-
-    todo!()
+    let mut board = vec![vec![false; s - r + 1]; q - p + 1];
+    for i in p..=q {
+        let k = i as isize - a as isize;
+        let j = b as isize + k;
+        if r as isize <= j && j <= s as isize {
+            board[i - p][j as usize - r] = true;
+        }
+        let j = b as isize - k;
+        if r as isize <= j && j <= s as isize {
+            board[i - p][j as usize - r] = true;
+        }
+    }
+    board
 }
