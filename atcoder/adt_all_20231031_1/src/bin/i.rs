@@ -20,6 +20,6 @@ fn main() {
 }
 
 fn yet_another_grid_task(s: Vec<Vec<char>>) -> ModInt {
-
+    
     todo!()
 }
