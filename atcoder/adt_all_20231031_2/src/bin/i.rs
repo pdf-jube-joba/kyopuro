@@ -42,6 +42,16 @@ fn damage_over_time(h: usize, mut td: Vec<(usize, usize)>) -> usize {
         }
         new_td
     };
+    // t[-1] = 0, t[n] = infinity
+    let n = td.len();
+
+    // return (d[i],  d[i-1] * t[i-1])
+    let dfati = |i: usize| -> (usize, usize) {
+        (
+            if i == n { 0 } else { td[i].1 },
+            if i == 0 { 0 } else { td[i - 1].1 * td[i - 1].0 },
+        )
+    };
     let prevt = |i: usize| -> usize {
         if i == 0 {
             0
@@ -49,43 +59,38 @@ fn damage_over_time(h: usize, mut td: Vec<(usize, usize)>) -> usize {
             td[i - 1].0
         }
     };
-    let prevtd = |i: usize| -> usize {
-        if i == 0 {
-            0
-        } else {
-            td[i - 1].1 * td[i - 1].0
-        }
-    };
+
     let n = td.len();
     let mut i = 0;
     // now = sum_{u in 0..t[i-1]} f(td)(u)
     let mut now = 0;
     let i = loop {
+        debug_assert!(now < h);
         // area = sum_{u in t[i-1]..t[i]} f(td)(u)
-        let area = if i == 0 {
-            integrate((td[0].1, prevtd(0)), (prevt(0), td[0].0))
-        } else if i == n {
-            std::usize::MAX
-        } else {
-            integrate((td[i].1, prevtd(i)), (prevt(i), td[i].0))
-        };
-        if now.saturating_add(area) >= h {
+        let area = integrate(
+            dfati(i),
+            (prevt(i), if i == n { std::usize::MAX } else { td[i].0 }),
+        );
+        if h <= now.saturating_add(area) {
             break i;
         }
         now += area;
         i += 1;
     };
-    // now < h <= now + sum_{u in t[i-1]..t[i]} f(td)(u)
-    let (mut ng, mut ok) = (prevt(i), h);
+    // sum_{u in 0..t[i-1]} < h <= sum_{u in 0..t[i]} f(td)(u)
+    // t (m) = now + sum_{u in t[i-1]..m} f(td)(u) >= h
+    let t = |x: usize| h <= now.saturating_add(integrate(dfati(i), (prevt(i), x)));
+    let (mut ng, mut ok) = (prevt(i), h + 1);
+    debug_assert!(!t(ng) && t(ok));
     while ok - ng > 1 {
         let mid = (ok + ng) / 2;
-        if now + integrate((td[i].1, prevtd(i)), (prevt(i), mid)) >= h {
+        if t(mid) {
             ok = mid;
         } else {
             ng = mid;
         }
     }
-    ok
+    ok - 1
 }
 
 #[cfg(test)]
