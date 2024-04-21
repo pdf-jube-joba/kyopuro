@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use itertools_num::ItertoolsNum;
 use num_traits::Saturating;
 use std::cmp::*;
 
@@ -31,153 +32,71 @@ fn integrate((a, b): (usize, usize), (l, r): (usize, usize)) -> usize {
 // represents f(td: Vec<(usize, usize>)) = x |-> max_{k in 0..td.len()} d[k] * min(u, t[k])
 struct TDMAX {
     td: Vec<(usize, usize)>,
-    maxdf: Vec<(Option<usize>, Option<usize>)>,
+    // cumsum[i] = sum_{u in 0..t'[i]} f(td)(u)
+    cumsum: Vec<usize>,
 }
 
 impl TDMAX {
-    fn new(td: Vec<(usize, usize)>) -> Self {
-        let mut tdi = (0..td.len()).collect_vec();
-        tdi.sort_by_key(|&i| (td[i].1, Reverse(td[i].0)));
-        tdi.dedup_by_key(|i| td[*i].1);
-        tdi.sort_by_key(|&i| (td[i].0, Reverse(td[i].1)));
-        tdi.dedup_by_key(|i| td[*i].0);
-        // i in tdi => forall j, t[i] = t[j] => d[i] > d[j], d[i] = d[j] => t[i] > t[j]
-        // i in tdi < j in tdi => t[i] < t[j]
-        let td = tdi.into_iter().map(|i| td[i]).collect_vec();
-        let n = td.len();
-
-        let dkref = |k: Option<usize>| -> usize { k.map(|k| td[k].1).unwrap_or(0) };
-        let tdkref = |k: Option<usize>| -> usize { k.map(|k| td[k].1 * td[k].0).unwrap_or(0) };
-
-        let mut kd = {
-            let mut v = (0..n).collect_vec();
-            v.sort_by_key(|&i| td[i].1);
-            v
-        };
-
-        let mut maxdf = vec![];
-        // maxdi = argmax (k in 0..n | t[i] <= t[k]) |-> d[k]
-        // maxfi = argmax (k in 0..n | t[k] < t[i]) |-> t[k] * d[k]
-        let (mut maxdi, mut maxfi): (Option<usize>, Option<usize>) = (kd.pop(), None);
-        
-        for i in 0..n {
-            maxdf.push((maxdi, maxfi));
-            if Some(i) == maxdi {
-                let tmp = maxdi.take();
-                
+    fn new(mut td: Vec<(usize, usize)>) -> Self {
+        // new_td does not have (t', d') in td s.t. exists (t, d) != (t', d') in td, d' < d & d' * t' <=(resp <) d * t
+        // f(td) = f(new_td)
+        let td = {
+            td.sort_by_key(|tdi| Reverse(tdi.1));
+            let mut new_td = vec![td[0]];
+            for (t, d) in td {
+                let (nt, nd) = new_td.last().unwrap();
+                if nt * nd < t * d {
+                    new_td.push((t, d));
+                }
             }
-            // let np = kd.pop();
-            // match np {
-            //     Some(np) => {
-            //         if np >= maxdi.unwrap() {
-            //             if tdkref(maxdi) >= tdkref(maxfi) {
-            //                 maxfi = maxdi.take();
-            //             }
-            //             maxdi = Some(np);
-            //         } else if dkref(Some(i)) >= dkref(maxfi) {
-            //             maxfi = Some(i);
-            //         }
-            //     }
-            //     None => {
-            //         if tdkref(maxdi) >= tdkref(maxfi) {
-            //             maxfi = maxdi.take();
-            //         }
-            //     }
-            // }
-        }
-        eprintln!("{maxdf:?}");
-
-        Self { td, maxdf }
+            new_td
+        };
+        let n = td.len();
+        let cumsum = (0..n)
+            .map(|i| {
+                if i == 0 {
+                    integrate((td[0].1, 0), (0, td[0].0))
+                } else {
+                    integrate((td[i].1, td[i - 1].1 * td[i - 1].0), (td[i - 1].0, td[i].0))
+                }
+            })
+            .cumsum()
+            .collect_vec();
+        Self { td, cumsum }
     }
-    // fn at(x: usize) -> usize {
-
-    // }
+    // sum_{u in 0..=r} f(u)
+    fn range(&self, r: usize) -> usize {
+        let n = self.td.len();
+        let i = self.td.partition_point(|tdi| tdi.0 < r);
+        let lessi = if i == 0 { 0 } else { self.cumsum[i - 1] };
+        let integ = integrate(
+            (
+                if i == n { 0 } else { self.td[i].1 },
+                if i == 0 {
+                    0
+                } else {
+                    self.td[i - 1].1 * self.td[i - 1].0
+                },
+            ),
+            (if i == 0 { 0 } else { self.td[i - 1].0 }, r + 1),
+        );
+        lessi.saturating_add(integ)
+    }
 }
 
-// same as min {i in NN | sum_{u in 0..=i} max_{k in 0..n} d[k] * min(u, t[k]) >= H}
+// same as min {i in NN | sum_{u in 0..=i} max_{k in 0..N} d[k] * min(u, t[k]) >= H}
 fn damage_over_time(h: usize, td: Vec<(usize, usize)>) -> usize {
-    let mut tdi = (0..td.len()).collect_vec();
-    tdi.sort_by_key(|&i| (td[i].1, Reverse(td[i].0)));
-    tdi.dedup_by_key(|i| td[*i].1);
-    tdi.sort_by_key(|&i| (td[i].0, Reverse(td[i].1)));
-    tdi.dedup_by_key(|i| td[*i].0);
-    // i in tdi => forall j, t[i] = t[j] => d[i] > d[j], d[i] = d[j] => t[i] > t[j]
-    // i in tdi < j in tdi => t[i] < t[j]
-    let td = tdi.into_iter().map(|i| td[i]).collect_vec();
-    let n = td.len();
-
-    let dkref = |k: Option<usize>| -> usize { k.map(|k| td[k].1).unwrap_or(0) };
-    let tdkref = |k: Option<usize>| -> usize { k.map(|k| td[k].1 * td[k].0).unwrap_or(0) };
-
-    let t2 = {
-        let mut t = vec![0, std::usize::MAX];
-        t.extend(td.iter().map(|td| td.0));
-        t.sort();
-        t.dedup();
-        t
-    };
-    let mut i = 0;
-    let mut kd = {
-        let mut v = (0..n).collect_vec();
-        v.sort_by_key(|&i| td[i].1);
-        v
-    };
-    // maxdi = argmax (k in 0..n | t2[i] <= t[k]) |-> d[k]
-    // maxfi = argmax (k in 0..n | t[k] < t2[i]) |-> t[k] * d[k]
-    let (mut maxdi, mut maxfi): (Option<usize>, Option<usize>) = (kd.pop(), None);
-    // now_h == sum_{u in 0..t2[i]} max_{k in 0..n} d[k] * min(u, t[k])
-    let mut now_h: usize = 0;
-
-    let _ = TDMAX::new(td.clone());
-
-    loop {
-        // now_h < h
-        let this_range_sum = integrate((dkref(maxdi), tdkref(maxfi)), (t2[i], t2[i + 1]));
-
-        if h <= now_h.saturating_add(this_range_sum) {
-            break;
-        }
-
-        now_h += this_range_sum;
-        i += 1;
-        let np = kd.pop();
-
-        match np {
-            Some(np) => {
-                if np >= maxdi.unwrap() {
-                    if tdkref(maxdi) >= tdkref(maxfi) {
-                        maxfi = maxdi.take();
-                    }
-                    maxdi = Some(np);
-                } else if dkref(Some(np)) >= dkref(maxfi) {
-                    maxfi = Some(np);
-                }
-            }
-            None => {
-                if tdkref(maxdi) >= tdkref(maxfi) {
-                    maxfi = maxdi.take();
-                }
-            }
-        }
-    }
-    // now_h < h <= sum_{u in t2[i]..t2[i+1]}
-
-    let from = t2[i];
-    let (mut ng, mut ok) = (t2[i], t2[i + 1]);
+    let tdmax = TDMAX::new(td);
+    let (mut ng, mut ok) = (0, h);
     while ok - ng > 1 {
-        let mid = if ok == std::usize::MAX {
-            ng * 2
-        } else {
-            (ng + ok) / 2
-        };
-        if h <= now_h.saturating_add(integrate((dkref(maxdi), tdkref(maxfi)), (from, mid))) {
+        let mid = (ok + ng) / 2;
+        if tdmax.range(mid) >= h {
             ok = mid;
         } else {
             ng = mid;
         }
     }
-    eprintln!("{i} {maxdi:?} {maxfi:?} {ng} {ok}");
-    ok - 1
+    ok
 }
 
 #[cfg(test)]
@@ -203,26 +122,43 @@ mod tests {
     }
     #[test]
     fn t() {
-        // let v = vec![(1, 1), (1, 1)];
-        // assert_eq!(damage_over_time(1, v.clone()), 1);
-        // assert_eq!(damage_over_time(2, v.clone()), 2);
-        // assert_eq!(damage_over_time(3, v.clone()), 3);
-        // assert_eq!(damage_over_time(4, v.clone()), 4);
+        let v = vec![(1, 1), (1, 1)];
+        assert_eq!(damage_over_time(1, v.clone()), 1);
+        assert_eq!(damage_over_time(2, v.clone()), 2);
+        assert_eq!(damage_over_time(3, v.clone()), 3);
+        assert_eq!(damage_over_time(4, v.clone()), 4);
 
-        // let v = vec![(1, 2), (1, 2), (2, 1)];
-        // assert_eq!(damage_over_time(1, v.clone()), 1);
-        // assert_eq!(damage_over_time(2, v.clone()), 1);
-        // assert_eq!(damage_over_time(3, v.clone()), 2);
-        // assert_eq!(damage_over_time(4, v.clone()), 2);
-        // assert_eq!(damage_over_time(5, v.clone()), 3);
-        // assert_eq!(damage_over_time(6, v.clone()), 3);
+        let v = vec![(10, 1)];
+        assert_eq!(damage_over_time(1, v.clone()), 1);
+        assert_eq!(damage_over_time(2, v.clone()), 2);
+        assert_eq!(damage_over_time(3, v.clone()), 2);
+        assert_eq!(damage_over_time(4, v.clone()), 3);
+        assert_eq!(damage_over_time(5, v.clone()), 3);
+        assert_eq!(damage_over_time(6, v.clone()), 3);
+        assert_eq!(damage_over_time(7, v.clone()), 4);
+
+        assert_eq!(damage_over_time(95, v.clone()), 14);
+        assert_eq!(damage_over_time(96, v.clone()), 15);
+        assert_eq!(damage_over_time(100, v.clone()), 15);
+        assert_eq!(damage_over_time(105, v.clone()), 15);
+
+        let v = vec![(1, 2), (1, 1), (2, 1)];
+        assert_eq!(damage_over_time(1, v.clone()), 1);
+        assert_eq!(damage_over_time(2, v.clone()), 1);
+        assert_eq!(damage_over_time(3, v.clone()), 2);
+        assert_eq!(damage_over_time(4, v.clone()), 2);
+        assert_eq!(damage_over_time(5, v.clone()), 3);
+        assert_eq!(damage_over_time(6, v.clone()), 3);
 
         let v = vec![(1, 1), (3, 2), (2, 5), (4, 3), (5, 4)];
-        // assert_eq!(damage_over_time(1, v.clone()), 1);
-        // assert_eq!(damage_over_time(5, v.clone()), 1);
-        // assert_eq!(damage_over_time(15, v.clone()), 2);
+        assert_eq!(damage_over_time(1, v.clone()), 1);
+        assert_eq!(damage_over_time(5, v.clone()), 1);
+        assert_eq!(damage_over_time(15, v.clone()), 2);
         assert_eq!(damage_over_time(16, v.clone()), 3);
-        // assert_eq!(damage_over_time(27, v.clone()), 3);
-        // assert_eq!(damage_over_time(28, v.clone()), 4);
+        assert_eq!(damage_over_time(27, v.clone()), 3);
+        assert_eq!(damage_over_time(28, v.clone()), 4);
+
+        let v = vec![(1000000000, 1)];
+        assert_eq!(damage_over_time(1000000000000000000, v), 1500000000);
     }
 }
