@@ -28,7 +28,7 @@ fn integrate((a, b): (usize, usize), (l, r): (usize, usize)) -> usize {
     squ + tri
 }
 
-// f(td: Vec<(usize, usize>)) = x |-> max_{k in 0..td.len()} d[k] * min(u, t[k])
+// represents f(td: Vec<(usize, usize>)) = x |-> max_{k in 0..td.len()} d[k] * min(u, t[k])
 struct TDMAX {
     td: Vec<(usize, usize)>,
     maxdf: Vec<(Option<usize>, Option<usize>)>,
@@ -49,13 +49,6 @@ impl TDMAX {
         let dkref = |k: Option<usize>| -> usize { k.map(|k| td[k].1).unwrap_or(0) };
         let tdkref = |k: Option<usize>| -> usize { k.map(|k| td[k].1 * td[k].0).unwrap_or(0) };
 
-        let t2 = {
-            let mut t = vec![0, std::usize::MAX];
-            t.extend(td.iter().map(|td| td.0));
-            t.sort();
-            t.dedup();
-            t
-        };
         let mut kd = {
             let mut v = (0..n).collect_vec();
             v.sort_by_key(|&i| td[i].1);
@@ -63,28 +56,34 @@ impl TDMAX {
         };
 
         let mut maxdf = vec![];
+        // maxdi = argmax (k in 0..n | t[i] <= t[k]) |-> d[k]
+        // maxfi = argmax (k in 0..n | t[k] < t[i]) |-> t[k] * d[k]
         let (mut maxdi, mut maxfi): (Option<usize>, Option<usize>) = (kd.pop(), None);
         
-        for i in 0..t2.len()-1 {
+        for i in 0..n {
             maxdf.push((maxdi, maxfi));
-            let np = kd.pop();
-            match np {
-                Some(np) => {
-                    if np >= maxdi.unwrap() {
-                        if tdkref(maxdi) >= tdkref(maxfi) {
-                            maxfi = maxdi.take();
-                        }
-                        maxdi = Some(np);
-                    } else if dkref(Some(i)) >= dkref(maxfi) {
-                        maxfi = Some(i);
-                    }
-                }
-                None => {
-                    if tdkref(maxdi) >= tdkref(maxfi) {
-                        maxfi = maxdi.take();
-                    }
-                }
+            if Some(i) == maxdi {
+                let tmp = maxdi.take();
+                
             }
+            // let np = kd.pop();
+            // match np {
+            //     Some(np) => {
+            //         if np >= maxdi.unwrap() {
+            //             if tdkref(maxdi) >= tdkref(maxfi) {
+            //                 maxfi = maxdi.take();
+            //             }
+            //             maxdi = Some(np);
+            //         } else if dkref(Some(i)) >= dkref(maxfi) {
+            //             maxfi = Some(i);
+            //         }
+            //     }
+            //     None => {
+            //         if tdkref(maxdi) >= tdkref(maxfi) {
+            //             maxfi = maxdi.take();
+            //         }
+            //     }
+            // }
         }
         eprintln!("{maxdf:?}");
 
