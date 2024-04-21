@@ -29,68 +29,57 @@ fn integrate((a, b): (usize, usize), (l, r): (usize, usize)) -> usize {
     squ + tri
 }
 
-// represents f(td: Vec<(usize, usize>)) = x |-> max_{k in 0..td.len()} d[k] * min(u, t[k])
-struct TDMAX {
-    td: Vec<(usize, usize)>,
-    // cumsum[i] = sum_{u in 0..t'[i]} f(td)(u)
-    cumsum: Vec<usize>,
-}
-
-impl TDMAX {
-    fn new(mut td: Vec<(usize, usize)>) -> Self {
-        // new_td does not have (t', d') in td s.t. exists (t, d) != (t', d') in td, d' < d & d' * t' <=(resp <) d * t
-        // f(td) = f(new_td)
-        let td = {
-            td.sort_by_key(|tdi| Reverse(tdi.1));
-            let mut new_td = vec![td[0]];
-            for (t, d) in td {
-                let (nt, nd) = new_td.last().unwrap();
-                if nt * nd < t * d {
-                    new_td.push((t, d));
-                }
-            }
-            new_td
-        };
-        let n = td.len();
-        let cumsum = (0..n)
-            .map(|i| {
-                if i == 0 {
-                    integrate((td[0].1, 0), (0, td[0].0))
-                } else {
-                    integrate((td[i].1, td[i - 1].1 * td[i - 1].0), (td[i - 1].0, td[i].0))
-                }
-            })
-            .cumsum()
-            .collect_vec();
-        Self { td, cumsum }
-    }
-    // sum_{u in 0..=r} f(u)
-    fn range(&self, r: usize) -> usize {
-        let n = self.td.len();
-        let i = self.td.partition_point(|tdi| tdi.0 < r);
-        let lessi = if i == 0 { 0 } else { self.cumsum[i - 1] };
-        let integ = integrate(
-            (
-                if i == n { 0 } else { self.td[i].1 },
-                if i == 0 {
-                    0
-                } else {
-                    self.td[i - 1].1 * self.td[i - 1].0
-                },
-            ),
-            (if i == 0 { 0 } else { self.td[i - 1].0 }, r + 1),
-        );
-        lessi.saturating_add(integ)
-    }
-}
-
 // same as min {i in NN | sum_{u in 0..=i} max_{k in 0..N} d[k] * min(u, t[k]) >= H}
-fn damage_over_time(h: usize, td: Vec<(usize, usize)>) -> usize {
-    let tdmax = TDMAX::new(td);
-    let (mut ng, mut ok) = (0, h);
+fn damage_over_time(h: usize, mut td: Vec<(usize, usize)>) -> usize {
+    let td = {
+        td.sort_by_key(|tdi| (Reverse(tdi.1), Reverse(tdi.0)));
+        let mut new_td = vec![td[0]];
+        for (t, d) in td {
+            let (nt, nd) = new_td.last().unwrap();
+            if nt * nd < t * d {
+                new_td.push((t, d));
+            }
+        }
+        new_td
+    };
+    let prevt = |i: usize| -> usize {
+        if i == 0 {
+            0
+        } else {
+            td[i - 1].0
+        }
+    };
+    let prevtd = |i: usize| -> usize {
+        if i == 0 {
+            0
+        } else {
+            td[i - 1].1 * td[i - 1].0
+        }
+    };
+    let n = td.len();
+    let mut i = 0;
+    // now = sum_{u in 0..t[i-1]} f(td)(u)
+    let mut now = 0;
+    let i = loop {
+        // area = sum_{u in t[i-1]..t[i]} f(td)(u)
+        let area = if i == 0 {
+            integrate((td[0].1, prevtd(0)), (prevt(0), td[0].0))
+        } else if i == n {
+            std::usize::MAX
+        } else {
+            integrate((td[i].1, prevtd(i)), (prevt(i), td[i].0))
+        };
+        if now.saturating_add(area) >= h {
+            break i;
+        }
+        now += area;
+        i += 1;
+    };
+    // now < h <= now + sum_{u in t[i-1]..t[i]} f(td)(u)
+    let (mut ng, mut ok) = (prevt(i), h);
     while ok - ng > 1 {
         let mid = (ok + ng) / 2;
-        if tdmax.range(mid) >= h {
+        if now + integrate((td[i].1, prevtd(i)), (prevt(i), mid)) >= h {
             ok = mid;
         } else {
             ng = mid;
