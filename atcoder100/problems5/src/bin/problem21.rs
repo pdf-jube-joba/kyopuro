@@ -26,7 +26,7 @@ fn count(hs: &[(usize, usize)]) -> usize {
     let mut r = std::usize::MAX; // min {r} f(r)
     while r - l > 1 {
         let mid = (r + l) / 2;
-        if f(&hs, mid) {
+        if f(hs, mid) {
             r = mid;
         } else {
             l = mid;

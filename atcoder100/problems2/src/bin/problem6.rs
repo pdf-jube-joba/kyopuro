@@ -8,7 +8,7 @@ fn main() {
         let mut vec = Vec::new();
         (0..n).for_each(|_|{
             vec.push(s % 10);
-            s = s / 10;
+            s /= 10;
         });
         vec
     };
@@ -28,7 +28,7 @@ fn count(a: &[usize]) -> usize {
             }
             j += 1;
         }
-        return true;
+        true
     };
     (0..1000)
     .map(|num|{
