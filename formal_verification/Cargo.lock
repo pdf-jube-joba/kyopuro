@@ -3,6 +3,14 @@
 version = 3
 
 [[package]]
+name = "formal_verification"
+version = "0.1.0"
+dependencies = [
+ "prusti-contracts",
+ "prusti-std",
+]
+
+[[package]]
 name = "prusti-contracts"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -24,12 +32,4 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdfa3ef284b835cc688e9788442f6af1561dba1b57876f4441bfd3ba7ae16778"
 dependencies = [
  "prusti-contracts",
-]
-
-[[package]]
-name = "prusti-test"
-version = "0.1.0"
-dependencies = [
- "prusti-contracts",
- "prusti-std",
 ]
