@@ -14,7 +14,10 @@ fn input() -> Vec<Vec<usize>> {
     while n != 0 {
         let mut s = String::new();
         std::io::stdin().read_line(&mut s).expect("い");
-        let v: Vec<usize> = s.split_whitespace().map(|str|{str.parse().unwrap()}).collect();
+        let v: Vec<usize> = s
+            .split_whitespace()
+            .map(|str| str.parse().unwrap())
+            .collect();
         vec.push(v[2..].to_owned());
         n -= 1;
     }
@@ -22,7 +25,13 @@ fn input() -> Vec<Vec<usize>> {
 }
 
 fn print(n: usize, d: &[Option<usize>], f: &[Option<usize>]) {
-    let p = |n: Option<usize>| {if let Some(i) = n {i.to_string()} else {"*".to_string()}};
+    let p = |n: Option<usize>| {
+        if let Some(i) = n {
+            i.to_string()
+        } else {
+            "*".to_string()
+        }
+    };
     for i in 0..n {
         println!("{} {} {}", i, p(d[i]), p(f[i]));
     }
@@ -44,7 +53,11 @@ fn depth_first_search(vec: Vec<Vec<usize>>, d: &mut [Option<usize>], f: &mut [Op
                 l.push(now);
             }
             (Some(_), None) => {
-                if let Some(exist) = vec[now].clone().into_iter().filter(|v|{f[v.to_owned()].is_none()}).next() {
+                if let Some(exist) = vec[now]
+                    .clone()
+                    .into_iter()
+                    .find(|v| f[v.to_owned()].is_none())
+                {
                     l.push(now);
                     now = exist;
                 } else {
@@ -59,7 +72,7 @@ fn depth_first_search(vec: Vec<Vec<usize>>, d: &mut [Option<usize>], f: &mut [Op
                     break;
                 }
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }

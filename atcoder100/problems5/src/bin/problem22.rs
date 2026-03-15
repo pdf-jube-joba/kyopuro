@@ -4,13 +4,10 @@ fn main() {
     }
 
     println!("{}", best(p));
-
 }
 
 fn best(p: f64) -> f64 {
-    let f = |x|{
-        x + (p / (2_f64.powf(x as f64 / 1.5)))
-    };
+    let f = |x| x + (p / (2_f64.powf(x / 1.5)));
     let mut l = 0_f64;
     let mut r = p;
     while r - l > 0.000_000_001 {
@@ -29,7 +26,7 @@ fn best(p: f64) -> f64 {
 mod tests {
     use crate::*;
     #[test]
-    fn bext_test_1(){
+    fn bext_test_1() {
         let result = (best(3.0) - 2.87089).abs() < 0.001;
         assert!(result)
     }
