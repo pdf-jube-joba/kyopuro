@@ -2,8 +2,8 @@ use std::{time, env, fs, process::{self, Command}};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let target: String = args[0].clone().into();
-    let input_file: String = args[1].clone().into();
+    let target: String = args[0].clone();
+    let input_file: String = args[1].clone();
     let file = fs::File::open(input_file).expect("file not found");
 
     let build_out = process::Command::new("cargo")
